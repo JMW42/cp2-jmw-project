@@ -11,6 +11,6 @@
 #include "particle.h"
 
 
-BrownianParticle::BrownianParticle(){
-    std::cout << "creating brownian particle" << std::endl;
+Particle2D::Particle2D(){
+    std::cout << "creating 2d particle" << std::endl;
 }

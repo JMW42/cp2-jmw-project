@@ -6,7 +6,11 @@
  * 
  * **/
 
-class BrownianParticle{
+class Particle2D{
     public:
-        BrownianParticle();
+        Particle2D();
+        long double xpos; // xposition of the particle
+        long double ypos; // yposition of the particle
+
+
 };

@@ -8,17 +8,21 @@
 
 
 #include <iostream>
+#include <vector>
 
 #include "particle.h"
+
+
+
+
 
 
 
 int main(){
     std::cout << "hello world" << std::endl;
 
-    BrownianParticle p1;
-
-
+    Particle2D p1;
+    
 
 
 

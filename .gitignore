@@ -6,7 +6,7 @@ config/
 secured/
 hidden/
 result/
-
+tmp/
 
 *.vcxproj
 *.vcxproj.filters
