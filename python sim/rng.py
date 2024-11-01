@@ -1,10 +1,20 @@
+""" 
+AUTHOR: Jonathan Will
+CREATED: unknown
+UPDATED: 01.11.2024
+
+The rnpg.py file is a script to test various rngs, validate code for the simulation and calculate further parameters.
+
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-kb=1
-T = 1
-friction = 1
+
+kb=1.380649e-23 # J/K bolzmann constant
+T = 290 # K
+dt = 1e-10
 
 
 hist = []
@@ -53,9 +63,11 @@ for i in range(10000):
     farr.append(np.dot(f, f))
 
 
-# second moment of force:
+# second moment of force squared (dot product):
 fsm=np.mean(farr)
 
-dt = 4*friction * kb * T / fsm
 
-print(f'dt={dt}')
+
+friction = dt*fsm / (4*kb*T)
+
+print(f'friction={friction}')

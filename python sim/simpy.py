@@ -1,9 +1,10 @@
 """ 
 CREATED: 20.10.2024
 AUTHOR: Jonathan Will
-UPDATED: 30.10.2024
+UPDATED: 01.11.2024
 
-This is a first test for brownian mitions/dynamics of single/few particles in python
+This is a first test for brownian mitions/dynamics of single/few particles in python.
+The aim of this code is to validify the simulation code and calculate the diffusion constant
 
 
 """
@@ -13,7 +14,9 @@ import numpy as np
 
 # GLOBAL VARIABLES:
 friction:float = 1
-dt:float = 2
+dt:float = 1e-10 # s, timescale
+kb:float=1.380649e-23 # J/K bolzmann constant
+T = 290 # K, temperature
 
 
 # PARTICLE:
@@ -49,7 +52,7 @@ def external_force(x:float, y:float, t:float):
 
 def thermal_force(x:float, y:float, t:float):
     """ thermal force, simulates the random kicks, done for brownian motion."""
-    return np.array([rng_normal(), rng_normal()])
+    return (friction * kb*T)*np.array([rng_normal(), rng_normal()])
 
 
 def borwnian_move(x:float, y:float, t:float):
@@ -68,21 +71,54 @@ particles.append(Particle2D(0, 0))
 
 
 # simulation loop
-t = 0
-for i in range(10000):
+t = 0.1
+tarr = [t]
+for i in range(1000):
     # itterate over every particle:
     for p in particles:
         p.move(*borwnian_move(p.x, p.y, t))
 
     t += dt
+    tarr.append(t)
+
+
+
+# calculate results:
+
+for p in particles:
+    
+    # mean position
+    print(f'<r> = ({np.mean(p.hist_x)}+/- {np.std(p.hist_x)}, {np.mean(p.hist_y)}+/- {np.std(p.hist_y)})')
+
+
+    #<(r(t) - r(t=0))^2> = 4Dt
+    
+    # calculate delta to start position
+    xarr = np.subtract(p.hist_x, p.hist_x[0])
+    yarr = np.subtract(p.hist_y, p.hist_y[0])
+
+
+
+    # square elements
+    xarr = np.power(p.hist_x, 2)
+    yarr = np.power(p.hist_y, 2)
+
+    arr = np.add(xarr, yarr) # (r(t) - r(t=0))^2
+
+    darr = np.divide(arr, tarr) # list of diffusion values
+
+
+    print(f' <D> = {np.mean(darr)} +/- {np.std(darr)}')
+    print(f' <gamma> = {kb*T / np.mean(darr)}')
+    
 
 
 # visualice results
-
 fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
 
 for p in particles:
-    axes.plot(p.hist_x, p.hist_y)
+    axes.plot(p.hist_x, p.hist_y, ".--")
+    axes.plot(p.hist_x[-1], p.hist_y[-1], "o", color="red")
 
 plt.show()
