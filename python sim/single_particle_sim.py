@@ -8,12 +8,14 @@ The aim of this code is to validify the simulation code and calculate the diffus
 
 
 """
+
+from uncertainties import ufloat
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 # GLOBAL VARIABLES:
-friction:float = 1
+friction:float = 2e37
 dt:float = 1e-10 # s, timescale
 kb:float=1.380649e-23 # J/K bolzmann constant
 T = 290 # K, temperature
@@ -26,17 +28,15 @@ class Particle2D:
         self.x:float = x0
         self.y:float = y0
 
-        # temporal history:
-        self.hist_x = [self.x]
-        self.hist_y = [self.y]
-
+        # movement history
+        self.trace = [[self.x, self.y]]
+    
 
     def move(self, dx:float, dy:float):
         self.x +=dx
         self.y +=dy
 
-        self.hist_x.append(self.x)
-        self.hist_y.append(self.y)
+        self.trace.append([self.x, self.y])
 
 
 # METHODS:
@@ -85,32 +85,40 @@ for i in range(1000):
 
 # calculate results:
 
+i = -1
 for p in particles:
+    i += 1
+    print(f'-'*40)
+    print(f"Evaluating particle: {i}")
+    
+    
     
     # mean position
-    print(f'<r> = ({np.mean(p.hist_x)}+/- {np.std(p.hist_x)}, {np.mean(p.hist_y)}+/- {np.std(p.hist_y)})')
-
-
-    #<(r(t) - r(t=0))^2> = 4Dt
+    ufrx = ufloat(np.mean(np.mean(list(zip(*p.trace))[0])), np.std(np.mean(list(zip(*p.trace))[0])))
+    ufry = ufloat(np.mean(np.mean(list(zip(*p.trace))[1])), np.std(np.mean(list(zip(*p.trace))[1])))
     
-    # calculate delta to start position
-    xarr = np.subtract(p.hist_x, p.hist_x[0])
-    yarr = np.subtract(p.hist_y, p.hist_y[0])
+    # check that <r> = (0, 0)
+    print(f' <r> = ({ufrx} , {ufry})')
+
+
+    # calculate diffusion coefficient for each timestep
+    #with: <(r(t) - r(t=0))^2> = 4Dt
+
+    # caluclate list of distance vectors to starting position    
+    dr = np.subtract(p.trace, p.trace[0]) #r(t) - r(t=0)
+
+    # calculate power 2 term in formular
+    dr2 = np.add(np.power(list(zip(*p.trace))[0],2), np.power(list(zip(*p.trace))[1], 2)) # (r(t) - r(t=0))^2 = dr^2
+
+    # calculate D(t) as list corresponding to t in tarr
+    darr = np.divide(dr2, np.multiply(tarr, 4)) # (r(t) - r(t=0))^2/(4t) = dr^2/(4t) = D(t)
+
+    ufd = ufloat(np.mean(darr), np.std(darr))
+    print(f' <D> = {ufd}')
+    print(f' compare: D = {kb*T/friction}')
 
 
 
-    # square elements
-    xarr = np.power(p.hist_x, 2)
-    yarr = np.power(p.hist_y, 2)
-
-    arr = np.add(xarr, yarr) # (r(t) - r(t=0))^2
-
-    darr = np.divide(arr, tarr) # list of diffusion values
-
-
-    print(f' <D> = {np.mean(darr)} +/- {np.std(darr)}')
-    print(f' <gamma> = {kb*T / np.mean(darr)}')
-    
 
 
 # visualice results
@@ -118,7 +126,8 @@ fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
 
 for p in particles:
-    axes.plot(p.hist_x, p.hist_y, ".--")
-    axes.plot(p.hist_x[-1], p.hist_y[-1], "o", color="red")
+    axes.plot(list(zip(*p.trace))[0], list(zip(*p.trace))[1], ".--")
+    axes.plot(list(zip(*p.trace))[0][-1], list(zip(*p.trace))[1][-1], "o", color="red")
+    axes.plot(list(zip(*p.trace))[0][0], list(zip(*p.trace))[1][0], "o", color="navy")
 
 plt.show()

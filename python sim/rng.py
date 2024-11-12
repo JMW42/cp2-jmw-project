@@ -66,8 +66,14 @@ for i in range(10000):
 # second moment of force squared (dot product):
 fsm=np.mean(farr)
 
+print(f'average thermalforce: {fsm}')
+
 
 
 friction = dt*fsm / (4*kb*T)
 
 print(f'friction={friction}')
+
+
+
+
