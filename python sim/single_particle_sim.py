@@ -15,11 +15,12 @@ import numpy as np
 
 
 # GLOBAL VARIABLES:
-friction:float = 2e37
-dt:float = 1e-10 # s, timescale
 kb:float=1.380649e-23 # J/K bolzmann constant
 T = 290 # K, temperature
-
+R = 1 # particle radius
+friction:float = kb*T/1 # friction constant
+dt:float = R**2/(kb*T) # s, timescale
+rng_width:float = np.sqrt(8*friction*kb*T/dt) # width of the normal distributed rng
 
 # PARTICLE:
 class Particle2D:
@@ -42,7 +43,7 @@ class Particle2D:
 # METHODS:
 def rng_normal():
     """ rng used for the random kicks by the thermal force."""
-    return np.random.normal()
+    return np.random.normal(scale=rng_width)
 
 
 def external_force(x:float, y:float, t:float):
@@ -62,7 +63,6 @@ def borwnian_move(x:float, y:float, t:float):
     return dt/friction*(Fex + Ft)
 
 
-
 # MAIN CODE:
 particles = []
 
@@ -71,7 +71,7 @@ particles.append(Particle2D(0, 0))
 
 
 # simulation loop
-t = 0.1
+t = 1e-10
 tarr = [t]
 for i in range(1000):
     # itterate over every particle:
@@ -113,7 +113,7 @@ for p in particles:
     # calculate D(t) as list corresponding to t in tarr
     darr = np.divide(dr2, np.multiply(tarr, 4)) # (r(t) - r(t=0))^2/(4t) = dr^2/(4t) = D(t)
 
-    ufd = ufloat(np.mean(darr), np.std(darr))
+    ufd = ufloat(np.mean(darr), np.std(darr)) # ufloat object of D(t)
     print(f' <D> = {ufd}')
     print(f' compare: D = {kb*T/friction}')
 
