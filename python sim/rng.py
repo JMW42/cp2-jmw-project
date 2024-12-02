@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 kb:float=1.380649e-23 # J/K bolzmann constant
 T = 290 # K, temperature
 R = 1 # particle radius
-friction:float = kb*T/1 # friction constant
+friction:float = kb*T/R # friction constant
 dt:float = R**2/(kb*T) # s, timescale
 rng_width:float = np.sqrt(8*friction*kb*T/dt) # width of the normal distributed rng
 

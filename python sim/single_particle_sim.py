@@ -1,7 +1,7 @@
 """ 
 CREATED: 20.10.2024
 AUTHOR: Jonathan Will
-UPDATED: 01.11.2024
+UPDATED: 29.11.2024
 
 This is a first test for brownian mitions/dynamics of single/few particles in python.
 The aim of this code is to validify the simulation code and calculate the diffusion constant
@@ -15,12 +15,15 @@ import numpy as np
 
 
 # GLOBAL VARIABLES:
-kb:float=1.380649e-23 # J/K bolzmann constant
-T = 290 # K, temperature
-R = 1 # particle radius
-friction:float = kb*T/1 # friction constant
-dt:float = R**2/(kb*T) # s, timescale
+kb:float=1 # bolzmann constant
+T:float = 1 # K, temperature
+R:float = 1 # particle radius
+friction:float = 1 # friction constant
+dt:float = R**2/(kb*T)/100 # timescale
 rng_width:float = np.sqrt(8*friction*kb*T/dt) # width of the normal distributed rng
+
+print(f' dt = {dt}')
+
 
 # PARTICLE:
 class Particle2D:
@@ -67,11 +70,12 @@ def borwnian_move(x:float, y:float, t:float):
 particles = []
 
 
-particles.append(Particle2D(0, 0))
+for i in range(10):
+    particles.append(Particle2D(0, 0))
 
 
 # simulation loop
-t = 1e-10
+t = 1e-20
 tarr = [t]
 for i in range(1000):
     # itterate over every particle:
@@ -94,8 +98,8 @@ for p in particles:
     
     
     # mean position
-    ufrx = ufloat(np.mean(np.mean(list(zip(*p.trace))[0])), np.std(np.mean(list(zip(*p.trace))[0])))
-    ufry = ufloat(np.mean(np.mean(list(zip(*p.trace))[1])), np.std(np.mean(list(zip(*p.trace))[1])))
+    ufrx = ufloat(np.mean(list(zip(*p.trace))[0]), np.std(list(zip(*p.trace))[0]))
+    ufry = ufloat(np.mean(list(zip(*p.trace))[1]), np.std(list(zip(*p.trace))[1]))
     
     # check that <r> = (0, 0)
     print(f' <r> = ({ufrx} , {ufry})')
@@ -129,5 +133,6 @@ for p in particles:
     axes.plot(list(zip(*p.trace))[0], list(zip(*p.trace))[1], ".--")
     axes.plot(list(zip(*p.trace))[0][-1], list(zip(*p.trace))[1][-1], "o", color="red")
     axes.plot(list(zip(*p.trace))[0][0], list(zip(*p.trace))[1][0], "o", color="navy")
+    axes.plot([ufrx.nominal_value], [ufry.nominal_value], "o", color="lime")
 
 plt.show()
