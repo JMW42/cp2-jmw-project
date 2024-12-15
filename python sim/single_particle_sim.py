@@ -1,7 +1,7 @@
 """ 
 CREATED: 20.10.2024
 AUTHOR: Jonathan Will
-UPDATED: 08.12.2024
+UPDATED: 14.12.2024
 
 This is a first test for brownian mitions/dynamics of single/few particles in python.
 The aim of this code is to validify the simulation code and calculate the diffusion constant
@@ -12,6 +12,7 @@ The aim of this code is to validify the simulation code and calculate the diffus
 from uncertainties import ufloat
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 
 # GLOBAL VARIABLES:
@@ -96,6 +97,9 @@ for i in range(n_steps):
 xarr = [list(list(zip(*p.trace))[0]) for p in particles] # array of xpositions of particles
 yarr = [list(list(zip(*p.trace))[1]) for p in particles] # array of ypositions of particles
 
+np.savetxt("data/single_particle/xarr.txt", xarr)
+np.savetxt("data/single_particle/yarr.txt", yarr)
+
 
 # calculate <r^2(t)>: enssemble mean position for given t
 # calculate ensemble mean for x and y position
@@ -105,6 +109,11 @@ yarr2 = np.power(yarr, 2)
 
 r2 =  np.add(xarr2, yarr2)
 r2_mean = np.mean(r2, axis=0)
+
+
+# save r2_mean dataset
+df = pd.DataFrame({"time [a.u.]":tarr, "<r^2> [a.u.]":r2_mean})
+df.to_csv("data/single_particle/r2_ensemble.csv")
 
 
 # <(r(t)-r_0)^2>=4Dt mit D=k_BT/gamma.
@@ -135,6 +144,11 @@ dr2_mean = np.mean(dr2, axis=0)
 Darr = np.divide(dr2_mean, np.multiply(tarr, 4))
 
 
+# save diffusion constant dataset
+df = pd.DataFrame({"time [a.u.]":tarr, "D [a.u.]":Darr})
+df.to_csv("data/single_particle/diffusion_constant_ensemble.csv")
+
+
 
 
 # visualice results
@@ -146,6 +160,7 @@ for p in particles:
     axes.plot(list(zip(*p.trace))[0][-1], list(zip(*p.trace))[1][-1], "o", color="red")
     axes.plot(list(zip(*p.trace))[0][0], list(zip(*p.trace))[1][0], "o", color="navy")
 
+fig.savefig("data/single_particle/traces.png")
 plt.show()
 
 
@@ -163,6 +178,7 @@ axes.set_xlim([0.1, 10])
 axes.set_ylim([0.3, 50])
 axes.grid()
 
+fig.savefig("data/single_particle/r2_ensemble.png")
 plt.show()
 
 
@@ -175,4 +191,5 @@ axes.set_ylabel("<D(t)>")
 axes.set_xlabel("Time t [a.u.]")
 axes.grid()
 
+fig.savefig("data/single_particle/diffusion_constant_ensemble.png")
 plt.show()
