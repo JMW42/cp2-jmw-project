@@ -1,7 +1,7 @@
 """ 
 CREATED: 08.12.2024
 AUTHOR: Jonathan Will
-UPDATED: 14.12.2024
+UPDATED: 19.12.2024
 
 Implementation of an n-particle brownian motion simulation.
 
@@ -22,7 +22,8 @@ import numpy as np
 # simulation related
 NUMBER_STEPS:int = 1000 # number of simulation steps
 NUMBER_PARTICLES:int = 100 # number of prticles
-EVALUATE_ENSEMBLE = False
+EVALUATE_ENSEMBLE:bool = True
+BOUNDARY_BOX:list = [80, 80]
 
 # nature constants
 kb:float=1 # bolzmann constant
@@ -45,8 +46,9 @@ t:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated ti
 
 
 # lattice parameters:
-a1 = np.asarray([1,0]) # lattice basis vector
-a2 = np.asarray([0,1]) # lattice basis vector
+a1 = np.asarray([np.sqrt(3)/2, 1/2])*4 # lattice basis vector
+a2 = np.asarray([np.sqrt(3)/2, -1/2])*4 # lattice basis vector
+
 
 # ########################################################################################################################
 # ########################################################################################################################
@@ -69,6 +71,26 @@ class Particle2D:
     def move(self, dx:float, dy:float) -> None:
         self.x +=dx
         self.y +=dy
+
+        # boundary check:
+
+        # right boundary
+        if self.x > BOUNDARY_BOX[0]/2:
+            self.x -= BOUNDARY_BOX[0]
+
+        # left boundary
+        if self.x < -1*BOUNDARY_BOX[0]/2:
+            self.x += BOUNDARY_BOX[0]
+
+        #upper boundary
+        if self.y > BOUNDARY_BOX[1]/2:
+            self.y -= BOUNDARY_BOX[1]
+
+        # lower boundary
+        if self.y < -1*BOUNDARY_BOX[1]/2:
+            self.y += BOUNDARY_BOX[1]   
+
+
 
         # add new position to trace lists
         particles_traces_x[self.id].append(self.x)
@@ -93,12 +115,32 @@ def thermal_force(x:float, y:float, t:float)->np.ndarray:
     """ thermal force, simulates the random kicks, done for brownian motion."""
     return (friction * kb*T)*np.array([rng_normal(), rng_normal()])
 
+def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
+    """ repulsive force, following an inverse hooks law if the particles overlapp for the given position and time"""
+    F = np.asarray([0.0,0.0])
+
+
+    for p in particles:
+
+        if np.abs((x-p.x)) < R and (np.abs((y-p.y)) <R):
+            if (x == p.x) and (y == p.y): continue
+
+            d = np.sqrt((x-p.x)**2 + (y-p.y)**2)
+            vec = np.asarray([(x-p.x), (y-p.y)])/d
+            F += vec*(1/d)*100
+            print("C", x, y)
+
+    return F
+
+
 
 def borwnian_move(x:float, y:float, t:float)->np.ndarray:
     """ method to calculate the change of a particles position done by a brownian movement."""
-    Fex = external_force(x, y, t)
-    Ft = thermal_force(x, y, t)
-    return dt/friction*(Fex + Ft)
+    Fex = external_force(x, y, t)  # exteenal additional force
+    Ft = thermal_force(x, y, t) # thermal force, borwnian motion
+    Fint = repulsive_interaction(x, y, t) # interactin force between particles
+
+    return dt/friction*(Fex + Ft + Fint)
 
 
 def capture_particle_snapshot(name):
@@ -123,8 +165,8 @@ plt.ioff()
 # create particles:
 for i in range(NUMBER_PARTICLES):
     
-    n1:int = int(i/np.sqrt(NUMBER_PARTICLES)) # n1 gitter coordinate
-    n2:int = int(i%np.sqrt(NUMBER_PARTICLES)) # n2 gitter coordinate
+    n1:int = int(i/np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n1 gitter coordinate
+    n2:int = int(i%np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n2 gitter coordinate
 
     pos = np.add(np.multiply(a1, n1), np.multiply(a2, n2)) # position in global coordinate grid
 
@@ -154,8 +196,17 @@ fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
 for xarr, yarr in zip(particles_traces_x, particles_traces_y):
     axes.plot(xarr, yarr, ".--", alpha=0.5)
-    axes.plot(xarr[0], yarr[0], "o", alpha=1, color="navy")
+    #axes.plot(xarr[0], yarr[0], "o", alpha=1, color="navy")
     axes.plot(xarr[-1], yarr[-1], "o", alpha=1, color="red")
+
+    c = plt.Circle((xarr[-1], yarr[-1]), 1, color="navy")
+    axes.add_artist(c)
+
+
+
+axes.set_xlim([-1.2*BOUNDARY_BOX[0]/2, 1.2*BOUNDARY_BOX[0]/2])
+axes.set_ylim([-1.2*BOUNDARY_BOX[1]/2, 1.2*BOUNDARY_BOX[1]/2])
+
 
 fig.savefig("data/n_particle/particle_traces.png")
 plt.show()
@@ -214,6 +265,7 @@ if EVALUATE_ENSEMBLE:
     axes.set_xscale('log')
     axes.grid()
 
+    fig.savefig("data/n_particle/r2-ensemble.png")
     plt.show()
 
 
@@ -222,9 +274,12 @@ if EVALUATE_ENSEMBLE:
 
     axes.plot(t[1:], Darr[1:], label="<D(t)>", color="navy")
 
+    axes.set_ylim([0, 2])
     axes.set_ylabel("<D(t)>")
     axes.set_xlabel("Time t [a.u.]")
     axes.grid()
+
+    fig.savefig("data/n_particle/D-ensemble.png")
 
     plt.show()
 

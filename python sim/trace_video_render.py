@@ -1,7 +1,7 @@
 """ 
 CREATED: 08.12.2024
 AUTHOR: Jonathan Will
-UPDATED: 14.12.2024
+UPDATED: 19.12.2024
 
 Python script to render videos of particle traces with given matrix files creates by single_particle and n_particle simulations.
 
@@ -65,7 +65,14 @@ height = np.max(particles_traces_y) - np.min(particles_traces_y)
 def update(i):
     axes.clear()
     print(i)
-    axes.scatter(particles_traces_x[:, i], particles_traces_y[:, i], color="black")
+
+    #axes.scatter(particles_traces_x[:, i], particles_traces_y[:, i], color="navy")
+
+    for x, y in zip(particles_traces_x[:, i], particles_traces_y[:, i]):
+        c = plt.Circle((x, y), 1)
+        #axes.set_aspect( 1 )
+        axes.add_artist(c)
+
 
     axes.text(0.95, 0.95, f"step: {i} of {len(particles_traces_x[0])-1}",
         horizontalalignment='right',
