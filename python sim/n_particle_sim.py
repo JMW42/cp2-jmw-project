@@ -20,10 +20,10 @@ import numpy as np
 # GLOBAL VARIABLES:
 
 # simulation related
-NUMBER_STEPS:int = 1000 # number of simulation steps
-NUMBER_PARTICLES:int = 100 # number of prticles
-EVALUATE_ENSEMBLE:bool = True
-BOUNDARY_BOX:list = [80, 80]
+NUMBER_STEPS:int = 50 # number of simulation steps
+NUMBER_PARTICLES:int = 4 # number of prticles
+EVALUATE_ENSEMBLE:bool = False
+BOUNDARY_BOX:list = [6, 6]
 
 # nature constants
 kb:float=1 # bolzmann constant
@@ -56,12 +56,13 @@ a2 = np.asarray([np.sqrt(3)/2, -1/2])*4 # lattice basis vector
 
 class Particle2D:
     """ Particle2D, class used to simulate the particles."""
-    def __init__(self, x0:float=0, y0:float=0, id:int=0):
+    def __init__(self, x0:float=0, y0:float=0, id:int=None):
         self.x:float = x0
         self.y:float = y0
         
         # get id for later usage of the trace lists
         self.id:int = id
+        if not self.id:self.id = len(particles)
 
         # append new list to trace list
         particles_traces_x.append([x0])
@@ -88,8 +89,7 @@ class Particle2D:
 
         # lower boundary
         if self.y < -1*BOUNDARY_BOX[1]/2:
-            self.y += BOUNDARY_BOX[1]   
-
+            self.y += BOUNDARY_BOX[1]
 
 
         # add new position to trace lists
@@ -120,17 +120,43 @@ def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
     F = np.asarray([0.0,0.0])
 
 
+    
     for p in particles:
-
+        # standart repulsice interaction:
         if np.abs((x-p.x)) < R and (np.abs((y-p.y)) <R):
             if (x == p.x) and (y == p.y): continue
 
-            d = np.sqrt((x-p.x)**2 + (y-p.y)**2)
-            vec = np.asarray([(x-p.x), (y-p.y)])/d
-            F += vec*(1/d)*100
-            print("C", x, y)
+            d = np.sqrt((x-p.x)**2 + (y-p.y)**2) # distance between particles
+            vec = np.asarray([(x-p.x), (y-p.y)])/d # interaction vector
+            F += vec*(1/d)*10
+            #print("C", x, y)
 
+        # boundary interaction:
+
+        ## 1. check if close to boundary:
+        if ((BOUNDARY_BOX[0]/2 - np.abs(x)) < R) or ((BOUNDARY_BOX[1]/2 - np.abs(y)) < R):
+
+            # 2. calculate trafo vector based on quandrant vectors
+            Qa = np.asarray([np.sign(x), np.sign(y)])
+            Qb = np.asarray([np.sign(p.x), np.sign(p.y)])
+            Eab = np.subtract(Qa, Qb)/2
+
+            # 3. calculate virtual position for interaction over boundary:
+            rb = np.asarray([p.x, p.y]) + np.multiply(Eab, BOUNDARY_BOX)
+            print(x,y, " <-> ", p.x, p.y, rb)
+
+            if np.abs((x-rb[0])) < R and (np.abs((y-rb[1])) <R):
+                d = np.sqrt((x-rb[0])**2 + (y-rb[1])**2)
+                vec = np.asarray([(x-rb[0]), (y-rb[1])])/d
+                F += vec*(1/d)*40
+                print("boundary interaction")
+                for i in range(10):
+                    print("BOUNDARY INTERACTION!!!")
+
+
+        
     return F
+
 
 
 
@@ -139,7 +165,7 @@ def borwnian_move(x:float, y:float, t:float)->np.ndarray:
     Fex = external_force(x, y, t)  # exteenal additional force
     Ft = thermal_force(x, y, t) # thermal force, borwnian motion
     Fint = repulsive_interaction(x, y, t) # interactin force between particles
-
+    
     return dt/friction*(Fex + Ft + Fint)
 
 
@@ -163,17 +189,33 @@ plt.ioff()
 
 
 # create particles:
-for i in range(NUMBER_PARTICLES):
-    
-    n1:int = int(i/np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n1 gitter coordinate
-    n2:int = int(i%np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n2 gitter coordinate
+#for i in range(NUMBER_PARTICLES):
+#    
+#    n1:int = int(i/np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n1 gitter coordinate
+#    n2:int = int(i%np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n2 gitter coordinate
+#
+#    pos = np.add(np.multiply(a1, n1), np.multiply(a2, n2)) # position in global coordinate grid
+#
+#    p:Particle2D = Particle2D(*pos, i) # initialise particle
+#    particles.append(p) # add particle to particle list
 
-    pos = np.add(np.multiply(a1, n1), np.multiply(a2, n2)) # position in global coordinate grid
+p:Particle2D = Particle2D(2, 0) # initialise particle
+particles.append(p)
 
-    p:Particle2D = Particle2D(*pos, i) # initialise particle
-    particles.append(p) # add particle to particle list
+p2:Particle2D = Particle2D(-2, 0) # initialise particle
+particles.append(p2)
 
 
+# visualize initial condition:
+fig, axes = plt.subplots(1,1, figsize=(10, 10))
+
+for p in particles:
+    c = plt.Circle((p.x, p.y), R, color="navy")
+    axes.add_artist(c)
+
+axes.plot([BOUNDARY_BOX[0]/2, BOUNDARY_BOX[0]/2, -1*BOUNDARY_BOX[0]/2, -1*BOUNDARY_BOX[0]/2, BOUNDARY_BOX[0]/2], [-1*BOUNDARY_BOX[1]/2, BOUNDARY_BOX[1]/2, BOUNDARY_BOX[1]/2, -1*BOUNDARY_BOX[1]/2, -1*BOUNDARY_BOX[1]/2], color="black")
+
+plt.show()
 
 
 # simulation:
@@ -199,7 +241,7 @@ for xarr, yarr in zip(particles_traces_x, particles_traces_y):
     #axes.plot(xarr[0], yarr[0], "o", alpha=1, color="navy")
     axes.plot(xarr[-1], yarr[-1], "o", alpha=1, color="red")
 
-    c = plt.Circle((xarr[-1], yarr[-1]), 1, color="navy")
+    c = plt.Circle((xarr[-1], yarr[-1]), R, color="navy")
     axes.add_artist(c)
 
 
@@ -214,6 +256,8 @@ plt.show()
 
 
 # SAVE PARTICLE TRACES:
+
+#print(particles_traces_x)
 np.savetxt("data/n_particle/x_traces.txt", particles_traces_x)
 np.savetxt("data/n_particle/y_traces.txt", particles_traces_y)
 

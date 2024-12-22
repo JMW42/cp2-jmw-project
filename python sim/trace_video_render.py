@@ -69,7 +69,7 @@ def update(i):
     #axes.scatter(particles_traces_x[:, i], particles_traces_y[:, i], color="navy")
 
     for x, y in zip(particles_traces_x[:, i], particles_traces_y[:, i]):
-        c = plt.Circle((x, y), 1)
+        c = plt.Circle((x, y), 0.5)
         #axes.set_aspect( 1 )
         axes.add_artist(c)
 
@@ -88,7 +88,7 @@ def update(i):
 
 
 
-ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0]), interval=0.01)
+ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0]), interval=500)
 ani.save('data/n_particle/animation.gif', writer='pillow')
 #len(particles_traces_x[0])
 
