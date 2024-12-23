@@ -23,7 +23,7 @@ import numpy as np
 NUMBER_STEPS:int = 50 # number of simulation steps
 NUMBER_PARTICLES:int = 4 # number of prticles
 EVALUATE_ENSEMBLE:bool = False
-BOUNDARY_BOX:list = [6, 6]
+BOUNDARY_BOX:list = [6, 40]
 
 # nature constants
 kb:float=1 # bolzmann constant
@@ -143,8 +143,8 @@ def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
 
             # 3. calculate virtual position for interaction over boundary:
             rb = np.asarray([p.x, p.y]) + np.multiply(Eab, BOUNDARY_BOX)
-            print(x,y, " <-> ", p.x, p.y, rb)
 
+            
             if np.abs((x-rb[0])) < R and (np.abs((y-rb[1])) <R):
                 d = np.sqrt((x-rb[0])**2 + (y-rb[1])**2)
                 vec = np.asarray([(x-rb[0]), (y-rb[1])])/d
@@ -199,11 +199,15 @@ plt.ioff()
 #    p:Particle2D = Particle2D(*pos, i) # initialise particle
 #    particles.append(p) # add particle to particle list
 
-p:Particle2D = Particle2D(2, 0) # initialise particle
-particles.append(p)
 
-p2:Particle2D = Particle2D(-2, 0) # initialise particle
-particles.append(p2)
+for i in np.linspace(-10, 10, 4):
+
+
+    p:Particle2D = Particle2D(2, i) # initialise particle
+    particles.append(p)
+
+    p:Particle2D = Particle2D(-2, i) # initialise particle
+    particles.append(p)
 
 
 # visualize initial condition:
