@@ -21,9 +21,9 @@ import numpy as np
 
 # simulation related
 NUMBER_STEPS:int = 50 # number of simulation steps
-NUMBER_PARTICLES:int = 4 # number of prticles
+NUMBER_PARTICLES:int = 16 # number of prticles
 EVALUATE_ENSEMBLE:bool = False
-BOUNDARY_BOX:list = [6, 40]
+BOUNDARY_BOX:list = [40, 40]
 
 # nature constants
 kb:float=1 # bolzmann constant
@@ -39,15 +39,16 @@ rng_width:float = np.sqrt(2*friction*kb*T/dt) # width of the normal distributed 
 
 # further variables:
 particles:list = [] # list of all particles
-particles_traces_x:list = [] # x component for the traces of all particles
-particles_traces_y:list = [] # y component for the traces of all particles
+particles_traces_x:list = [[]]*NUMBER_PARTICLES # x component for the traces of all particles
+particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of all particles
 
 t:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated time values:
-
 
 # lattice parameters:
 a1 = np.asarray([np.sqrt(3)/2, 1/2])*4 # lattice basis vector
 a2 = np.asarray([np.sqrt(3)/2, -1/2])*4 # lattice basis vector
+
+
 
 
 # ########################################################################################################################
@@ -65,8 +66,8 @@ class Particle2D:
         if not self.id:self.id = len(particles)
 
         # append new list to trace list
-        particles_traces_x.append([x0])
-        particles_traces_y.append([y0])
+        particles_traces_x[self.id] = [x0]
+        particles_traces_y[self.id] = [y0]
     
 
     def move(self, dx:float, dy:float) -> None:
@@ -134,7 +135,7 @@ def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
         # boundary interaction:
 
         ## 1. check if close to boundary:
-        if ((BOUNDARY_BOX[0]/2 - np.abs(x)) < R) or ((BOUNDARY_BOX[1]/2 - np.abs(y)) < R):
+        if ((BOUNDARY_BOX[0]/2 - np.abs(x)) < 2*R) or ((BOUNDARY_BOX[1]/2 - np.abs(y)) < 2*R):
 
             # 2. calculate trafo vector based on quandrant vectors
             Qa = np.asarray([np.sign(x), np.sign(y)])
@@ -144,14 +145,15 @@ def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
             # 3. calculate virtual position for interaction over boundary:
             rb = np.asarray([p.x, p.y]) + np.multiply(Eab, BOUNDARY_BOX)
 
-            
-            if np.abs((x-rb[0])) < R and (np.abs((y-rb[1])) <R):
+
+            if np.abs((x-rb[0])) < 2*R and (np.abs((y-rb[1])) < 2*R):
                 d = np.sqrt((x-rb[0])**2 + (y-rb[1])**2)
                 vec = np.asarray([(x-rb[0]), (y-rb[1])])/d
-                F += vec*(1/d)*40
+                F += vec*(1/d)*1000
                 print("boundary interaction")
-                for i in range(10):
-                    print("BOUNDARY INTERACTION!!!")
+                for i in range(1):
+                    print("BOUNDARY INTERACTION!!!", x, y)
+                    
 
 
         
@@ -203,10 +205,16 @@ plt.ioff()
 for i in np.linspace(-10, 10, 4):
 
 
-    p:Particle2D = Particle2D(2, i) # initialise particle
+    p:Particle2D = Particle2D(19, i) # initialise particle
     particles.append(p)
 
-    p:Particle2D = Particle2D(-2, i) # initialise particle
+    p:Particle2D = Particle2D(-19, i) # initialise particle
+    particles.append(p)
+
+    p:Particle2D = Particle2D(i, 19) # initialise particle
+    particles.append(p)
+
+    p:Particle2D = Particle2D(i, -19) # initialise particle
     particles.append(p)
 
 
