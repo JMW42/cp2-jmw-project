@@ -33,6 +33,10 @@ T:float = 1 # K, temperature
 R:float = 1 # particle radius
 friction:float = 1 # friction constant
 
+# interaction parameters:
+k_int:float = 10 # interaction constant, spring constant
+
+
 # derived variables/constants
 dt:float = R**2/(kb*T)/100 # timescale
 rng_width:float = np.sqrt(2*friction*kb*T/dt) # width of the normal distributed rng
@@ -58,9 +62,9 @@ a2 = np.asarray([np.sqrt(3)/2, -1/2])*4 # lattice basis vector
 class Particle2D:
     """ Particle2D, class used to simulate the particles."""
     def __init__(self, x0:float=0, y0:float=0, id:int=None):
-        self.x:float = x0
-        self.y:float = y0
         
+        self.r = np.asarray([x0, y0])
+
         # get id for later usage of the trace lists
         self.id:int = id
         if not self.id:self.id = len(particles)
@@ -69,8 +73,34 @@ class Particle2D:
         particles_traces_x[self.id] = [x0]
         particles_traces_y[self.id] = [y0]
     
+    # property: x-position
+    @property
+    def x(self) -> float:
+        return self.r[0]
+    
+    @x.setter
+    def x(self, x:float) -> None:
+        self.r[0] = x
 
+    # property: y-position
+    @property
+    def y(self) -> float:
+        return self.r[1]
+    
+    @y.setter
+    def y(self, y:float) -> None:
+        self.r[1] = y
+
+
+    @property
+    def Q(self) ->np.ndarray:
+        """ returns the quadrant vector for a given particle"""
+        return np.sign(self.r)
+
+
+    # method: move particle
     def move(self, dx:float, dy:float) -> None:
+        """ method used to move a given particle"""
         self.x +=dx
         self.y +=dy
 
@@ -116,12 +146,51 @@ def thermal_force(x:float, y:float, t:float)->np.ndarray:
     """ thermal force, simulates the random kicks, done for brownian motion."""
     return (friction * kb*T)*np.array([rng_normal(), rng_normal()])
 
+
+def repulsive_force(p1:Particle2D):
+    """ Method for calculating the repulsve force a given particle p1 experiences. Takes normal interaction withing abd over boundaries into account"""
+    F:np.ndarray = np.asarray([0.0, 0.0])
+
+    # standart repulsive force for particle p1 interactions with p2
+
+    for p2 in particles:
+        if p2 is p1: continue # ignore, because p2 is self
+
+        # casual repulsive interaction interaction based on inverse hookes law
+        vec:np.ndarray = p1.r - p2.r # distance vector between p1 and p2 (p2 -> p1)
+        length:np.ndarray = np.linalg.norm(vec, ord=2) # length of interaction vector, distance between mass centers of p1 and p2
+
+        vec = vec/length # normalize vector
+
+        # check if interaction is happening:
+        if length < 2*R:
+            F += (vec/length)*k_int # repulsive interaction force
+        
+
+        # boundary interaction:
+        if ((BOUNDARY_BOX[0]/2 - np.abs(p1.x)) < 2*R) or ((BOUNDARY_BOX[1]/2 - np.abs(p1.y)) < 2*R): # check for proximity of boundary:
+            
+            # 1. calculate trafo vector based on quandrant vectors
+            Eab = (p1.Q - p2.Q)/2
+            
+            # 2. calculate virtual position for interaction over boundary:
+            r2:np.ndarray = np.asarray([p2.x, p2.y]) + np.multiply(Eab, BOUNDARY_BOX) # position of virtual boundary particle
+            vec2 = p1.r - r2 # interaction vector for virtual boundary particle
+            length2:np.ndarray = np.linalg.norm(vec2, ord=2) # length of interaction vector for virtual boundary particle
+
+
+            if length2 < 2*R:
+                F += vec2/length2*k_int*100
+                print("BOUNDARY INTERACTION!!!", p1.x, p1.y)
+                    
+    return F
+
+
 def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
+    # deprecated, will be removed soon!
     """ repulsive force, following an inverse hooks law if the particles overlapp for the given position and time"""
     F = np.asarray([0.0,0.0])
 
-
-    
     for p in particles:
         # standart repulsice interaction:
         if np.abs((x-p.x)) < R and (np.abs((y-p.y)) <R):
@@ -129,7 +198,7 @@ def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
 
             d = np.sqrt((x-p.x)**2 + (y-p.y)**2) # distance between particles
             vec = np.asarray([(x-p.x), (y-p.y)])/d # interaction vector
-            F += vec*(1/d)*10
+            F += vec*(1/d)*k_int
             #print("C", x, y)
 
         # boundary interaction:
@@ -149,7 +218,7 @@ def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
             if np.abs((x-rb[0])) < 2*R and (np.abs((y-rb[1])) < 2*R):
                 d = np.sqrt((x-rb[0])**2 + (y-rb[1])**2)
                 vec = np.asarray([(x-rb[0]), (y-rb[1])])/d
-                F += vec*(1/d)*1000
+                F += vec*(1/d)*k_int
                 print("boundary interaction")
                 for i in range(1):
                     print("BOUNDARY INTERACTION!!!", x, y)
@@ -161,12 +230,11 @@ def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
 
 
 
-
-def borwnian_move(x:float, y:float, t:float)->np.ndarray:
+def borwnian_move(p:Particle2D, x:float, y:float, t:float)->np.ndarray:
     """ method to calculate the change of a particles position done by a brownian movement."""
     Fex = external_force(x, y, t)  # exteenal additional force
     Ft = thermal_force(x, y, t) # thermal force, borwnian motion
-    Fint = repulsive_interaction(x, y, t) # interactin force between particles
+    Fint = repulsive_force(p) # repulsive_interaction(x, y, t) # interactin force between particles
     
     return dt/friction*(Fex + Ft + Fint)
 
@@ -237,7 +305,7 @@ for i in range(1, NUMBER_STEPS):
     #capture_particle_snapshot(f"{i}.png")
 
     for p in particles:
-        p.move(*borwnian_move(p.x, p.y, t))
+        p.move(*borwnian_move(p, p.x, p.y, t))
     
 
 

@@ -55,5 +55,6 @@
         "vector": "cpp",
         "xhash": "cpp",
         "xtree": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "C:/Users/jonat/Desktop/CP2/workspace/cpp sim"
 }
