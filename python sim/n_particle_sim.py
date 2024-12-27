@@ -13,7 +13,7 @@ Implementation of an n-particle brownian motion simulation.
 
 import matplotlib.pyplot as plt
 import numpy as np
-
+import time
 
 # ########################################################################################################################
 # ########################################################################################################################
@@ -21,7 +21,7 @@ import numpy as np
 
 # simulation related
 NUMBER_STEPS:int = 50 # number of simulation steps
-NUMBER_PARTICLES:int = 16 # number of prticles
+NUMBER_PARTICLES:int = 14 # number of prticles
 EVALUATE_ENSEMBLE:bool = False
 BOUNDARY_BOX:list = [40, 40]
 
@@ -34,8 +34,11 @@ R:float = 1 # particle radius
 friction:float = 1 # friction constant
 
 # interaction parameters:
-k_int:float = 10 # interaction constant, spring constant
+k_int:float = 1000 # interaction constant, spring constant
 
+# lattice parameters:
+a1 = np.asarray([0, 1])*4 # lattice basis vector
+a2 = np.asarray([1, 0])*4 # lattice basis vector
 
 # derived variables/constants
 dt:float = R**2/(kb*T)/100 # timescale
@@ -48,10 +51,9 @@ particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of 
 
 t:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated time values:
 
-# lattice parameters:
-a1 = np.asarray([np.sqrt(3)/2, 1/2])*4 # lattice basis vector
-a2 = np.asarray([np.sqrt(3)/2, -1/2])*4 # lattice basis vector
+interaction_force = np.zeros((NUMBER_PARTICLES, NUMBER_PARTICLES)) # matrix for temporal storing the force acting between individual particles
 
+print(interaction_force)
 
 
 
@@ -104,25 +106,14 @@ class Particle2D:
         self.x +=dx
         self.y +=dy
 
-        # boundary check:
+        # boundary check left and right boundary
+        if np.abs(self.x) > BOUNDARY_BOX[0]/2:
+            self.x -= np.sign(self.x)*BOUNDARY_BOX[0]
 
-        # right boundary
-        if self.x > BOUNDARY_BOX[0]/2:
-            self.x -= BOUNDARY_BOX[0]
-
-        # left boundary
-        if self.x < -1*BOUNDARY_BOX[0]/2:
-            self.x += BOUNDARY_BOX[0]
-
-        #upper boundary
-        if self.y > BOUNDARY_BOX[1]/2:
-            self.y -= BOUNDARY_BOX[1]
-
-        # lower boundary
-        if self.y < -1*BOUNDARY_BOX[1]/2:
-            self.y += BOUNDARY_BOX[1]
-
-
+        # boundary check upper and lower boundary
+        if np.abs(self.y) > BOUNDARY_BOX[1]/2:
+            self.y -= np.sign(self.y)*BOUNDARY_BOX[1]
+        
         # add new position to trace lists
         particles_traces_x[self.id].append(self.x)
         particles_traces_y[self.id].append(self.y)
@@ -175,12 +166,12 @@ def repulsive_force(p1:Particle2D):
             
             # 2. calculate virtual position for interaction over boundary:
             r2:np.ndarray = np.asarray([p2.x, p2.y]) + np.multiply(Eab, BOUNDARY_BOX) # position of virtual boundary particle
-            vec2 = p1.r - r2 # interaction vector for virtual boundary particle
+            vec2:np.ndarray = p1.r - r2 # interaction vector for virtual boundary particle
             length2:np.ndarray = np.linalg.norm(vec2, ord=2) # length of interaction vector for virtual boundary particle
 
 
             if length2 < 2*R:
-                F += vec2/length2*k_int*100
+                F += vec2/length2*k_int
                 print("BOUNDARY INTERACTION!!!", p1.x, p1.y)
                     
     return F
@@ -232,9 +223,9 @@ def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
 
 def borwnian_move(p:Particle2D, x:float, y:float, t:float)->np.ndarray:
     """ method to calculate the change of a particles position done by a brownian movement."""
-    Fex = external_force(x, y, t)  # exteenal additional force
-    Ft = thermal_force(x, y, t) # thermal force, borwnian motion
-    Fint = repulsive_force(p) # repulsive_interaction(x, y, t) # interactin force between particles
+    Fex:np.ndarray = external_force(x, y, t)  # exteenal additional force
+    Ft:np.ndarray = thermal_force(x, y, t) # thermal force, borwnian motion
+    Fint:np.ndarray = repulsive_force(p) # repulsive_interaction(x, y, t) # interactin force between particles
     
     return dt/friction*(Fex + Ft + Fint)
 
@@ -282,8 +273,14 @@ for i in np.linspace(-10, 10, 4):
     p:Particle2D = Particle2D(i, 19) # initialise particle
     particles.append(p)
 
-    p:Particle2D = Particle2D(i, -19) # initialise particle
-    particles.append(p)
+    #p:Particle2D = Particle2D(i, -19) # initialise particle
+    #particles.append(p)
+
+p:Particle2D = Particle2D(2, 6.1) # initialise particle
+particles.append(p)
+
+p:Particle2D = Particle2D(2, 5) # initialise particle
+particles.append(p)
 
 
 # visualize initial condition:
@@ -299,6 +296,7 @@ plt.show()
 
 
 # simulation:
+time_start = time.time()
 for i in range(1, NUMBER_STEPS):
     print(f'{i}') # print current simulation step
 
@@ -306,7 +304,10 @@ for i in range(1, NUMBER_STEPS):
 
     for p in particles:
         p.move(*borwnian_move(p, p.x, p.y, t))
-    
+
+
+time_end = time.time()
+print(f'time elapsed: {time_end - time_start}sec.')
 
 
 
