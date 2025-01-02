@@ -54,8 +54,8 @@ plt.show()
 
 fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
-axes.set_xlim([np.min(particles_traces_x)-np.min(particles_traces_x)*0.1, np.max(particles_traces_x)*1.1])
-axes.set_ylim([np.min(particles_traces_y)-np.min(particles_traces_y)*0.1, np.max(particles_traces_y)*1.1])
+axes.set_xlim([-1.2*BOUNDARY_BOX[0], 1.2*BOUNDARY_BOX[0]])
+axes.set_ylim([-1.2*BOUNDARY_BOX[1], 1.2*BOUNDARY_BOX[1]])
 
 axes.set_xlabel("x position [a.u.]")
 axes.set_ylabel("y position [a.u.]")

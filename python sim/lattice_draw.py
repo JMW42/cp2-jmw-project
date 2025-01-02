@@ -23,6 +23,8 @@ for i in range(NUMBER_PARTICLES):
     pos = np.add(np.multiply(a1, n1), np.multiply(a2, n2)) # position in global coordinate grid
 
     if not ( (np.abs(pos[0]) > BOUNDARY_BOX[0]/2) or (np.abs(pos[1]) > BOUNDARY_BOX[1]/2)):
+
+        
         lat_xarr.append(pos[0])
         lat_yarr.append(pos[1])
 
