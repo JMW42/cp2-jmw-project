@@ -51,9 +51,10 @@ particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of 
 
 t:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated time values:
 
-interaction_force = np.zeros((NUMBER_PARTICLES, NUMBER_PARTICLES)) # matrix for temporal storing the force acting between individual particles
+current_repulsive_force_x = np.zeros((NUMBER_PARTICLES, NUMBER_PARTICLES)) # matrix for temporal storing the force acting between individual particles
+current_repulsive_force_y = np.zeros((NUMBER_PARTICLES, NUMBER_PARTICLES))
 
-print(interaction_force)
+print(current_repulsive_force_x)
 
 
 
