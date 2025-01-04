@@ -20,8 +20,8 @@ import time
 # GLOBAL VARIABLES:
 
 # simulation related
-NUMBER_STEPS:int = 50 # number of simulation steps
-NUMBER_PARTICLES:int = 14 # number of prticles
+NUMBER_STEPS:int = 100 # number of simulation steps
+NUMBER_PARTICLES:int = 0 # number of prticles
 EVALUATE_ENSEMBLE:bool = False
 BOUNDARY_BOX:list = [40, 40]
 
@@ -34,15 +34,42 @@ R:float = 1 # particle radius
 friction:float = 1 # friction constant
 
 # interaction parameters:
-k_int:float = 1000 # interaction constant, spring constant
-
-# lattice parameters:
-a1 = np.asarray([0, 1])*4 # lattice basis vector
-a2 = np.asarray([1, 0])*4 # lattice basis vector
+k_int:float = 10 # interaction constant, spring constant
+int_exp:int = 1 # interaction exponential
 
 # derived variables/constants
 dt:float = R**2/(kb*T)/100 # timescale
 rng_width:float = np.sqrt(2*friction*kb*T/dt) # width of the normal distributed rng
+
+
+# calculate PARTICLE NUMBER:
+
+# lattice parameter
+a = 2.5
+posarr = []
+countx = int(BOUNDARY_BOX[0] / a)
+county = int(BOUNDARY_BOX[0] / a)
+
+for nx in range(-int(countx/2), int(countx/2)):
+    for ny in range(-int(county/2), int(county/2)):
+
+        px = nx*a + a*0.01
+        py = ny*a + a*0.01
+
+        if nx % 2 == 0:
+            py += a/2
+
+        dx = a/2
+        dy = dx
+        if (np.abs(px) >= np.abs( BOUNDARY_BOX[0]/2 - dx)) or (np.abs(py) >= np.abs(BOUNDARY_BOX[1]/2 - dy)):
+            continue
+        else:
+            posarr.append([px, py])
+
+
+NUMBER_PARTICLES = len(posarr)
+print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
+
 
 # further variables:
 particles:list = [] # list of all particles
@@ -50,11 +77,7 @@ particles_traces_x:list = [[]]*NUMBER_PARTICLES # x component for the traces of 
 particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of all particles
 
 t:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated time values:
-
-interaction_force = np.zeros((NUMBER_PARTICLES, NUMBER_PARTICLES)) # matrix for temporal storing the force acting between individual particles
-
-print(interaction_force)
-
+print(f"NUMBER OF TIMESTEPS: {len(t)}")
 
 
 # ########################################################################################################################
@@ -65,15 +88,22 @@ class Particle2D:
     """ Particle2D, class used to simulate the particles."""
     def __init__(self, x0:float=0, y0:float=0, id:int=None):
         
-        self.r = np.asarray([x0, y0])
+        self.r = np.asarray([x0, y0]) # particle position
+        self.F = np.asarray([0, 0]) # force acting on particle for a given time step
+
 
         # get id for later usage of the trace lists
         self.id:int = id
         if not self.id:self.id = len(particles)
 
         # append new list to trace list
-        particles_traces_x[self.id] = [x0]
-        particles_traces_y[self.id] = [y0]
+        try:
+            particles_traces_x[self.id] = [x0]
+            particles_traces_y[self.id] = [y0]
+        except Exception as E:
+            print(self.id)
+            print(E)
+            input("asdw")
     
     # property: x-position
     @property
@@ -118,6 +148,12 @@ class Particle2D:
         particles_traces_x[self.id].append(self.x)
         particles_traces_y[self.id].append(self.y)
 
+    
+    def move_by_force(self):
+        """ updates the particle position based on the stored force values. May the force be with you!!!!"""
+        dr = dt/friction*self.F
+        self.move(*dr)
+
 
 # ########################################################################################################################
 # ########################################################################################################################
@@ -128,17 +164,42 @@ def rng_normal()->np.ndarray:
     return np.random.normal(scale=rng_width)
 
 
-def external_force(x:float, y:float, t:float)->np.ndarray:
+
+def repulsive_force(rA: np.ndarray, rB: np.ndarray) -> np.ndarray:
+    """ calculates the repulsive force between two particle position A and B acting on A"""
+    F:np.ndarray = np.asarray([0.0, 0.0])
+
+    # 1. calculate vectorial distance and corresponding length
+    vec:np.ndarray = rA - rB # distance vector between rA and rB (rB -> rA), acting on rA
+    length:float = np.linalg.norm(vec, ord=2) # length of interaction vector, distance between mass centers of pA and pB
+    #length:float = np.sum(np.power(vec, 2))
+
+    vec = vec/length # normalize vector
+
+    # 2. check if positions are within interaction distance:
+    if length < 2*R:
+        #F += (vec/length**int_exp)*k_int # repulsive interaction force
+        F += (vec)*k_int
+        # k_int: interaction coeficient
+        # int_exp: interaction exponential
+    
+    return F
+
+
+
+def external_force_on_particle(p1:Particle2D, t:float)->np.ndarray:
     """ external force, defined by position and time"""
     return np.array([0, 0])
 
 
-def thermal_force(x:float, y:float, t:float)->np.ndarray:
+
+def thermal_force_on_particle(p1:Particle2D, t:float)->np.ndarray:
     """ thermal force, simulates the random kicks, done for brownian motion."""
     return (friction * kb*T)*np.array([rng_normal(), rng_normal()])
 
 
-def repulsive_force(p1:Particle2D):
+
+def repulsive_force_on_particle(p1:Particle2D):
     """ Method for calculating the repulsve force a given particle p1 experiences. Takes normal interaction withing abd over boundaries into account"""
     F:np.ndarray = np.asarray([0.0, 0.0])
 
@@ -147,16 +208,8 @@ def repulsive_force(p1:Particle2D):
     for p2 in particles:
         if p2 is p1: continue # ignore, because p2 is self
 
-        # casual repulsive interaction interaction based on inverse hookes law
-        vec:np.ndarray = p1.r - p2.r # distance vector between p1 and p2 (p2 -> p1)
-        length:np.ndarray = np.linalg.norm(vec, ord=2) # length of interaction vector, distance between mass centers of p1 and p2
-
-        vec = vec/length # normalize vector
-
-        # check if interaction is happening:
-        if length < 2*R:
-            F += (vec/length)*k_int # repulsive interaction force
-        
+        # casual interaction within boundaries
+        F += repulsive_force(p1.r, p2.r)
 
         # boundary interaction:
         if ((BOUNDARY_BOX[0]/2 - np.abs(p1.x)) < 2*R) or ((BOUNDARY_BOX[1]/2 - np.abs(p1.y)) < 2*R): # check for proximity of boundary:
@@ -164,82 +217,38 @@ def repulsive_force(p1:Particle2D):
             # 1. calculate trafo vector based on quandrant vectors
             Eab = (p1.Q - p2.Q)/2
             
+            # add check for invalid Eab vector --> magnitude not 1! --> no interaction
+
             # 2. calculate virtual position for interaction over boundary:
             r2:np.ndarray = np.asarray([p2.x, p2.y]) + np.multiply(Eab, BOUNDARY_BOX) # position of virtual boundary particle
-            vec2:np.ndarray = p1.r - r2 # interaction vector for virtual boundary particle
-            length2:np.ndarray = np.linalg.norm(vec2, ord=2) # length of interaction vector for virtual boundary particle
 
+            # interaction over the boundary (with virtual/translated particles)
+            F += repulsive_force(p1.r, r2)
 
-            if length2 < 2*R:
-                F += vec2/length2*k_int
-                print("BOUNDARY INTERACTION!!!", p1.x, p1.y)
-                    
-    return F
-
-
-def repulsive_interaction(x: float, y:float, t:float) -> np.ndarray:
-    # deprecated, will be removed soon!
-    """ repulsive force, following an inverse hooks law if the particles overlapp for the given position and time"""
-    F = np.asarray([0.0,0.0])
-
-    for p in particles:
-        # standart repulsice interaction:
-        if np.abs((x-p.x)) < R and (np.abs((y-p.y)) <R):
-            if (x == p.x) and (y == p.y): continue
-
-            d = np.sqrt((x-p.x)**2 + (y-p.y)**2) # distance between particles
-            vec = np.asarray([(x-p.x), (y-p.y)])/d # interaction vector
-            F += vec*(1/d)*k_int
-            #print("C", x, y)
-
-        # boundary interaction:
-
-        ## 1. check if close to boundary:
-        if ((BOUNDARY_BOX[0]/2 - np.abs(x)) < 2*R) or ((BOUNDARY_BOX[1]/2 - np.abs(y)) < 2*R):
-
-            # 2. calculate trafo vector based on quandrant vectors
-            Qa = np.asarray([np.sign(x), np.sign(y)])
-            Qb = np.asarray([np.sign(p.x), np.sign(p.y)])
-            Eab = np.subtract(Qa, Qb)/2
-
-            # 3. calculate virtual position for interaction over boundary:
-            rb = np.asarray([p.x, p.y]) + np.multiply(Eab, BOUNDARY_BOX)
-
-
-            if np.abs((x-rb[0])) < 2*R and (np.abs((y-rb[1])) < 2*R):
-                d = np.sqrt((x-rb[0])**2 + (y-rb[1])**2)
-                vec = np.asarray([(x-rb[0]), (y-rb[1])])/d
-                F += vec*(1/d)*k_int
-                print("boundary interaction")
-                for i in range(1):
-                    print("BOUNDARY INTERACTION!!!", x, y)
-                    
-
-
-        
     return F
 
 
 
 def borwnian_move(p:Particle2D, x:float, y:float, t:float)->np.ndarray:
-    """ method to calculate the change of a particles position done by a brownian movement."""
-    Fex:np.ndarray = external_force(x, y, t)  # exteenal additional force
-    Ft:np.ndarray = thermal_force(x, y, t) # thermal force, borwnian motion
-    Fint:np.ndarray = repulsive_force(p) # repulsive_interaction(x, y, t) # interactin force between particles
+    """ DEPRECATED: method to calculate the change of a particles position done by a brownian movement."""
+    Fex:np.ndarray = external_force_on_particle(x, y, t)  # exteenal additional force
+    Ft:np.ndarray = thermal_force_on_particle(x, y, t) # thermal force, borwnian motion
+    Fint:np.ndarray = repulsive_force_on_particle(p) # repulsive_interaction(x, y, t) # interactin force between particles
     
     return dt/friction*(Fex + Ft + Fint)
 
 
-def capture_particle_snapshot(name):
-    """ Draws the current position of the particles as matplotlib plot"""
 
-    fig, axes = plt.subplots(1,1, figsize=(10, 10))
+def calculate_force_on_particle(p:Particle2D, t:float)->np.ndarray:
+    """ calculates the sum of forces acting on a given particle p at a given time t."""
+    F = np.asanyarray([0.0, 0.0])
 
-    for p in particles:
-        axes.plot(p.x, p.y, "o", alpha=0.5, color="black")
+    F += external_force_on_particle(p, t)  # exteenal additional force
+    F += thermal_force_on_particle(p, t) # thermal force, borwnian motion
+    F += repulsive_force_on_particle(p)
 
-    plt.savefig(f'data/n_particle/snapshot/{name}')
-    plt.close(fig)
+    return F
+
 
 
 # ########################################################################################################################
@@ -248,39 +257,10 @@ def capture_particle_snapshot(name):
 
 plt.ioff()
 
-
-# create particles:
-#for i in range(NUMBER_PARTICLES):
-#    
-#    n1:int = int(i/np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n1 gitter coordinate
-#    n2:int = int(i%np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n2 gitter coordinate
-#
-#    pos = np.add(np.multiply(a1, n1), np.multiply(a2, n2)) # position in global coordinate grid
-#
-#    p:Particle2D = Particle2D(*pos, i) # initialise particle
-#    particles.append(p) # add particle to particle list
-
-
-for i in np.linspace(-10, 10, 4):
-
-
-    p:Particle2D = Particle2D(19, i) # initialise particle
-    particles.append(p)
-
-    p:Particle2D = Particle2D(-19, i) # initialise particle
-    particles.append(p)
-
-    p:Particle2D = Particle2D(i, 19) # initialise particle
-    particles.append(p)
-
-    #p:Particle2D = Particle2D(i, -19) # initialise particle
-    #particles.append(p)
-
-p:Particle2D = Particle2D(2, 6.1) # initialise particle
-particles.append(p)
-
-p:Particle2D = Particle2D(2, 5) # initialise particle
-particles.append(p)
+# place particles:
+for pos in posarr:
+    p:Particle2D = Particle2D(*pos) # initialise particle
+    particles.append(p) # add particle to particle list
 
 
 # visualize initial condition:
@@ -302,8 +282,18 @@ for i in range(1, NUMBER_STEPS):
 
     #capture_particle_snapshot(f"{i}.png")
 
+    print("calculating forces")
     for p in particles:
-        p.move(*borwnian_move(p, p.x, p.y, t))
+        #p.move(*borwnian_move(p, p.x, p.y, t))
+        p.F = calculate_force_on_particle(p, t) # calculate the force on given particle
+
+
+    print("performing position updates")
+    for p in particles:
+        p.move_by_force()
+
+
+
 
 
 time_end = time.time()
