@@ -20,8 +20,8 @@ import time
 # GLOBAL VARIABLES:
 
 # simulation related
-NUMBER_STEPS:int = 50 # number of simulation steps
-NUMBER_PARTICLES:int = 100 # number of prticles
+NUMBER_STEPS:int = 100 # number of simulation steps
+NUMBER_PARTICLES:int = 0 # number of prticles
 EVALUATE_ENSEMBLE:bool = False
 BOUNDARY_BOX:list = [40, 40]
 
@@ -34,16 +34,42 @@ R:float = 1 # particle radius
 friction:float = 1 # friction constant
 
 # interaction parameters:
-k_int:float = 100 # interaction constant, spring constant
-int_exp:int = 2 # interaction exponential
-
-# lattice parameters:
-a1 = np.asarray([np.sqrt(3)/2, -1/2])*2.2 # lattice basis vector
-a2 = np.asarray([np.sqrt(3)/2, 1/2])*2.2 # lattice basis vector
+k_int:float = 10 # interaction constant, spring constant
+int_exp:int = 1 # interaction exponential
 
 # derived variables/constants
 dt:float = R**2/(kb*T)/100 # timescale
 rng_width:float = np.sqrt(2*friction*kb*T/dt) # width of the normal distributed rng
+
+
+# calculate PARTICLE NUMBER:
+
+# lattice parameter
+a = 2.5
+posarr = []
+countx = int(BOUNDARY_BOX[0] / a)
+county = int(BOUNDARY_BOX[0] / a)
+
+for nx in range(-int(countx/2), int(countx/2)):
+    for ny in range(-int(county/2), int(county/2)):
+
+        px = nx*a + a*0.01
+        py = ny*a + a*0.01
+
+        if nx % 2 == 0:
+            py += a/2
+
+        dx = a/2
+        dy = dx
+        if (np.abs(px) >= np.abs( BOUNDARY_BOX[0]/2 - dx)) or (np.abs(py) >= np.abs(BOUNDARY_BOX[1]/2 - dy)):
+            continue
+        else:
+            posarr.append([px, py])
+
+
+NUMBER_PARTICLES = len(posarr)
+print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
+
 
 # further variables:
 particles:list = [] # list of all particles
@@ -51,7 +77,7 @@ particles_traces_x:list = [[]]*NUMBER_PARTICLES # x component for the traces of 
 particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of all particles
 
 t:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated time values:
-
+print(f"NUMBER OF TIMESTEPS: {len(t)}")
 
 
 # ########################################################################################################################
@@ -71,9 +97,13 @@ class Particle2D:
         if not self.id:self.id = len(particles)
 
         # append new list to trace list
-        particles_traces_x[self.id] = [x0]
-        particles_traces_y[self.id] = [y0]
-
+        try:
+            particles_traces_x[self.id] = [x0]
+            particles_traces_y[self.id] = [y0]
+        except Exception as E:
+            print(self.id)
+            print(E)
+            input("asdw")
     
     # property: x-position
     @property
@@ -141,13 +171,15 @@ def repulsive_force(rA: np.ndarray, rB: np.ndarray) -> np.ndarray:
 
     # 1. calculate vectorial distance and corresponding length
     vec:np.ndarray = rA - rB # distance vector between rA and rB (rB -> rA), acting on rA
-    length:np.ndarray = np.linalg.norm(vec, ord=2) # length of interaction vector, distance between mass centers of pA and pB
+    length:float = np.linalg.norm(vec, ord=2) # length of interaction vector, distance between mass centers of pA and pB
+    #length:float = np.sum(np.power(vec, 2))
 
     vec = vec/length # normalize vector
 
     # 2. check if positions are within interaction distance:
     if length < 2*R:
-        F += (vec/length**int_exp)*k_int # repulsive interaction force
+        #F += (vec/length**int_exp)*k_int # repulsive interaction force
+        F += (vec)*k_int
         # k_int: interaction coeficient
         # int_exp: interaction exponential
     
@@ -185,6 +217,8 @@ def repulsive_force_on_particle(p1:Particle2D):
             # 1. calculate trafo vector based on quandrant vectors
             Eab = (p1.Q - p2.Q)/2
             
+            # add check for invalid Eab vector --> magnitude not 1! --> no interaction
+
             # 2. calculate virtual position for interaction over boundary:
             r2:np.ndarray = np.asarray([p2.x, p2.y]) + np.multiply(Eab, BOUNDARY_BOX) # position of virtual boundary particle
 
@@ -223,18 +257,10 @@ def calculate_force_on_particle(p:Particle2D, t:float)->np.ndarray:
 
 plt.ioff()
 
-
-# create particles:
-for i in range(NUMBER_PARTICLES):
-    
-    n1:int = int(i/np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n1 gitter coordinate
-    n2:int = int(i%np.sqrt(NUMBER_PARTICLES)) - np.sqrt(NUMBER_PARTICLES)/2 # n2 gitter coordinate
-
-    pos = np.add(np.multiply(a1, n1), np.multiply(a2, n2)) + np.asarray([1,1]) # position in global coordinate grid
-
-    p:Particle2D = Particle2D(*pos, i) # initialise particle
+# place particles:
+for pos in posarr:
+    p:Particle2D = Particle2D(*pos) # initialise particle
     particles.append(p) # add particle to particle list
-
 
 
 # visualize initial condition:

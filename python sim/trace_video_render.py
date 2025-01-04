@@ -67,11 +67,17 @@ height = np.max(particles_traces_y) - np.min(particles_traces_y)
 
 def update(i):
     axes.clear()
-    print(i)
+
+    j = i-15
+    if j < 0:
+        j = 0
+
+
+    print(j)
 
     #axes.scatter(particles_traces_x[:, i], particles_traces_y[:, i], color="navy")
 
-    for x, y in zip(particles_traces_x[:, i], particles_traces_y[:, i]):
+    for x, y in zip(particles_traces_x[:, j], particles_traces_y[:, j]):
 
         # draw particles
         c = plt.Circle((x, y), 1, color="navy")
@@ -81,11 +87,14 @@ def update(i):
         # calculate virtual particles (copies outside of box)
         for Eab in [[1,0], [-1, 0], [0, 1], [0, -1]]:
             rb = np.asarray([x, y]) + np.multiply(Eab, BOUNDARY_BOX)
-            c = plt.Circle((rb[0], rb[1]), 1, color="red")
-            axes.add_artist(c)
+
+            if (np.abs(rb[0]) < BOUNDARY_BOX[0]/2*1.4) and (np.abs(rb[1]) < BOUNDARY_BOX[1]/2*1.4):
+                # only if close enought to boundary draw particle
+                c = plt.Circle((rb[0], rb[1]), 1, color="red")
+                axes.add_artist(c)
 
 
-    axes.text(0.95, 0.95, f"step: {i} of {len(particles_traces_x[0])-1}",
+    axes.text(0.95, 0.95, f"step: {j} of {len(particles_traces_x[0])-1}",
         horizontalalignment='right',
         verticalalignment='top',
         transform=axes.transAxes)
@@ -108,7 +117,7 @@ def update(i):
 
 
 
-ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0]), interval=100)
+ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0])+15, interval=100)
 ani.save('data/n_particle/animation.gif', writer='pillow')
 #len(particles_traces_x[0])
 
