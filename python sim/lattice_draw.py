@@ -47,24 +47,28 @@ while True:
     
 R = 1
 posarr = []
-a = 2.5
+# lattice parameter
+a:float = 2.1
 
+# calculate PARTICLE NUMBER:
+# calculate particle positions
+posarr:list = []
+countx:int = int(BOUNDARY_BOX[0] / a*2)
+county:int = int(BOUNDARY_BOX[0] / a*2)
 
-countx = int(BOUNDARY_BOX[0] / a)
-county = int(BOUNDARY_BOX[0] / a)
+for nx in range(-int(countx/2), int(countx/2) + 1):
+    for ny in range(-int(county/2), int(county/2)):
 
-for x in range(-int(countx/2), int(countx/2)):
-    for y in range(-int(county/2), int(county/2)):
+        px:float = nx*a/2 + a*0.01
+        py:float = ny*a*np.sqrt(3) + a*0.01
 
-        px = x*a + a*0.01
-        py = y*a + a*0.01
+        if nx % 2 == 0:
+            py += a*np.sqrt(3)/2
+            pass
 
-        if x % 2 == 0:
-            py += a/2
-
-        dx = a/2
+        dx = a/6
         dy = dx
-        if (np.abs(px) >= BOUNDARY_BOX[0]/2 - dx) or (np.abs(py) >= BOUNDARY_BOX[1]/2 - dy):
+        if (np.abs(px - dx) >= np.abs( BOUNDARY_BOX[0]/2)) or (np.abs(py - dy) >= np.abs(BOUNDARY_BOX[1]/2)):
             continue
         else:
             posarr.append([px, py])
@@ -79,15 +83,15 @@ fig, axes = plt.subplots(1,1, figsize=(10, 10))
 #axes.scatter(lat_xarr, lat_yarr, s=40)
 
 for pos in posarr:
-    c = plt.Circle((pos[0], pos[1]), R, color="navy")
+    c = plt.Circle((pos[0], pos[1]), R, facecolor="navy", edgecolor="black", linestyle="-", linewidth=2)
     axes.add_artist(c)
 
 
 axes.plot([BOUNDARY_BOX[0]/2, BOUNDARY_BOX[0]/2, -1*BOUNDARY_BOX[0]/2, -1*BOUNDARY_BOX[0]/2, BOUNDARY_BOX[0]/2], [-1*BOUNDARY_BOX[1]/2, BOUNDARY_BOX[1]/2, BOUNDARY_BOX[1]/2, -1*BOUNDARY_BOX[1]/2, -1*BOUNDARY_BOX[1]/2], color="black")
 
 
-axes.set_xlabel("x position in [a.u.]")
-axes.set_ylabel("y position in [a.u.]")
+axes.set_xlabel("x position in [a.u.]", fontsize=20)
+axes.set_ylabel("y position in [a.u.]", fontsize=20)
 axes.grid()
 
 

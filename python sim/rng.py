@@ -9,16 +9,16 @@ The rnpg.py file is a script to test various rngs, validate code for the simulat
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+import scipy.optimize as opt
 
 
 # GLOBAL VARIABLES:
-kb:float=1.380649e-23 # J/K bolzmann constant
-T = 290 # K, temperature
+kb:float=1 # J/K bolzmann constant
+T = 1 # K, temperature
 R = 1 # particle radius
 friction:float = kb*T/R # friction constant
-dt:float = R**2/(kb*T) # s, timescale
-rng_width:float = np.sqrt(8*friction*kb*T/dt) # width of the normal distributed rng
+dt:float = R**2/(kb*T)/100 # s, timescale
+rng_width:float = np.sqrt(2*friction*kb*T/dt) # width of the normal distributed rng
 
 
 hist = []
@@ -42,7 +42,7 @@ def rng_normal():
     return np.random.normal(scale=rng_width)
 
 
-for i in range(10000):
+for i in range(300*100*2):
     hist.append(rng_normal())
 
 
@@ -51,11 +51,35 @@ def thermal_force(x:float, y:float, t:float):
     return np.array([rng_normal(), rng_normal()])
 
 
+def func(x, ampl, x0, sigma, offset):
+    return ampl* np.exp( - (x - x0)**2 / (2 * sigma**2)) + offset
+
 
 # visualice:
 fig, axes = plt.subplots(1,1, figsize=(10, 5))
 
-axes.hist(hist, bins=100)
+count, bins, patches, = axes.hist(hist, bins=100, color="grey", ec='black', label="np.random.normal")
+xarr = bins[:-1] + (bins[1]-bins[0])/2
+
+
+popt, pcov = opt.curve_fit(func, xarr, count)
+perr = np.sqrt(np.diag(pcov))
+
+for name, value, error in zip(["ampl", "x0", "sigma", "offset"], popt, perr):
+    print(f"{name} = {value} +/- {error}")
+
+
+axes.plot(xarr, count, ".", linewidth=2, color='navy')
+axes.plot(xarr, func(xarr, *popt), "-", linewidth=2, color='r', label="Fit")
+
+
+axes.set_xlabel("RNG", fontsize=20)
+axes.set_ylabel("Counts", fontsize=20)
+axes.legend()
+axes.grid()
+
+
+fig.savefig("data/rng_hist.png", bbox_inches='tight')
 
 plt.show()
 
@@ -63,7 +87,7 @@ plt.show()
 
 # evaluate rng force
 farr = []
-for i in range(1000000):
+for i in range(200):
     f = thermal_force(0, 0, 0)
     farr.append(np.dot(f, f))
 
