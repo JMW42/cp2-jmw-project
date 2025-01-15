@@ -28,7 +28,7 @@ R = 1
 
 
 # simulation related
-a:float = 2 # lattice parameter
+a:float = 1.9 # lattice parameter
 GRID_SIZE = [20, 10]
 
 NUMBER_STEPS:int = 100 # number of simulation steps 
@@ -122,20 +122,21 @@ def update(i):
 
     #axes.set_xlim([np.min(particles_traces_x)-width*0.1, np.max(particles_traces_x)+width*0.1])
     #axes.set_ylim([np.min(particles_traces_y)-height*0.1, np.max(particles_traces_y)+height*0.1])
-    axes.set_xlim([-1.2*BOUNDARY_BOX[0], 1.2*BOUNDARY_BOX[0]])
-    axes.set_ylim([-1.2*BOUNDARY_BOX[1], 1.2*BOUNDARY_BOX[1]])
+    axes.set_xlim([-1.2*BOUNDARY_BOX[0] - 5*R, 1.2*BOUNDARY_BOX[0] + 5*R])
+    axes.set_ylim([-1.2*BOUNDARY_BOX[1] - 5*R, 1.2*BOUNDARY_BOX[1] + 5*R])
     axes.set_xlabel("x position [a.u.]")
     axes.set_ylabel("y position [a.u.]")
 
 
 
-ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0])+15, interval=150)
-ani.save('data/n_particle/animation.gif', writer='pillow')
+ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0])+15, interval=1)
+ani.save('data/n_particle/animation.gif', writer='pillow', fps=50, bitrate=1, dpi=50)
 #len(particles_traces_x[0])
 
 
 time_end = time.time()
-print(f" tooK : {time_end - time_start} sec.")
+dt = time_end - time_start
+print(f" tooK : {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} sec.")
 
 print("DONE")
 

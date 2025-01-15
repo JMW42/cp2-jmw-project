@@ -13,6 +13,7 @@ Implementation of an n-particle brownian motion simulation.
 
 import matplotlib.pyplot as plt
 import numpy as np
+import threading
 import time
 
 # ########################################################################################################################
@@ -32,6 +33,10 @@ BOUNDARY_BOX:list = [GRID_SIZE[0]*a/2, GRID_SIZE[1]*a*np.sqrt(3)] # size of the 
 ROTATION_ANGLE = np.pi/2
 ROTATION_RADIUS = a*3
 
+
+
+# threading:
+NUMBER_THREADS = 2
 
 
 print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
@@ -66,10 +71,14 @@ print(f'TIME: {tarr[0]}, .... , {tarr[-1]}')
 print(f'TIMESTEP: {dt}')
 
 
+# threading
+threads = []
+flag_threads_start = False
+flag_threads_clculate_force = False
+flag_threads_calculate_position = False
 
+n = 0 # simulation step
 
-
-input("continue .....")
 # ########################################################################################################################
 # ########################################################################################################################
 # CLASSES:
@@ -143,6 +152,101 @@ class Particle2D:
         """ updates the particle position based on the stored force values. May the force be with you!!!!"""
         dr = dt/friction*self.F
         self.move(*dr)
+
+
+class LoggingThread(threading.Thread):
+    def __init__(self, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
+        print("Initializing logging thread")
+        super().__init__(group, target, name, args, kwargs, daemon=daemon)
+        self._queue = []
+        self._running = True
+
+    def log(self, msg):
+        self._queue.append(msg)
+
+    
+    def close(self):
+        self._running = False
+
+
+    def run(self):
+        print("Starting logging thread")
+
+        while self._running:
+            if len(self._queue) > 0:
+                print(self._queue[0])
+                self._queue.pop(0)
+        
+        print("Closing logging thread")
+
+
+
+
+
+class SimulationThread(threading.Thread):
+    def __init__(self, id:int, index_start:int, index_end:int, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None):
+        super().__init__(group, target, name, args, kwargs, daemon=daemon)
+
+        print(f"initializing thread: {id} - particles: {index_start} to {index_end}")
+
+        self.id = id
+        self.index_start = index_start
+        self.index_end = index_end
+
+        self.finished_calculation_forces = False
+        self.finished_calculation_positions = False
+        self.finished_all = False
+    
+
+    def run(self):
+        logging.log(f"starting thread: {self.id}")
+
+        # initial wait:
+        logging.log(f" t{self.id}: waiting")
+        while not flag_threads_start:
+            pass
+        
+
+        while n < NUMBER_STEPS:
+
+            # wait for force calculation flag:
+            while not flag_threads_clculate_force:
+
+                # if n is to late updated, capture it by break
+                if n >= NUMBER_STEPS:
+                    break
+            
+            # if n is to late updated, capture it by break
+            if n >= NUMBER_STEPS:
+                    break
+
+            self.finished_calculation_positions = False
+
+            logging.log(f" {self.id} step: {n}")
+
+
+            # calculate forces:
+            logging.log(f" {self.id} calculating forces")
+            for i in range(self.index_start, self.index_end+1):
+                particles[i].F = calculate_force_on_particle(particles[i], tarr[n])
+
+            self.finished_calculation_forces = True # force calculation finished
+
+            # wait for position update flag:
+            while not flag_threads_calculate_position:
+                pass
+            
+            self.finished_calculation_forces = False
+
+            # update positions
+            logging.log(f" {self.id} calculating positions")
+            for i in range(self.index_start, self.index_end+1):
+                particles[i].move_by_force()
+
+            self.finished_calculation_positions = True # position updates done
+
+        logging.log(f"closing thread: {self.id}")
+        self.finished_all = True
 
 
 # ########################################################################################################################
@@ -260,7 +364,7 @@ def rotate_point(x, y, theta) -> tuple:
 
 def visualize_simulation(savefilepath=None):
     """ visualizes/plots the current state of the simulation"""
-    fig, axes = plt.subplots(1,1, figsize=(int(GRID_SIZE[0]/3), int(GRID_SIZE[1]*np.sqrt(3))))
+    fig, axes = plt.subplots(1,1, figsize=(int(GRID_SIZE[0]/4), int(GRID_SIZE[1]*np.sqrt(3))))
 
     # draw particles and virtual particles
     for p in particles:
@@ -290,6 +394,29 @@ def visualize_simulation(savefilepath=None):
     plt.show()
 
 
+def get_threads_finished_all():
+    status = []
+    for t in threads:
+        status.append(t.finished_all)
+
+    return status
+
+
+def get_threads_finished_calculating_forces():
+    status = []
+    for t in threads:
+        status.append(t.finished_calculation_forces)
+
+    return status
+
+
+def get_threads_finished_calculating_position():
+    status = []
+    for t in threads:
+        status.append(t.finished_calculation_positions)
+
+    return status
+
 # ########################################################################################################################
 # ########################################################################################################################
 # MAIN CODE:
@@ -315,34 +442,80 @@ for nx in range(0, GRID_SIZE[0]):
         particles.append(p) # add particle to particle list
 
 
-
-
 # visualize initial condition:
 visualize_simulation("data/n_particle/particle_initial.png")
-
 
 
 # simulation:
 time_start = time.time()
 
 
-for i in range(1, NUMBER_STEPS):
-    print(f'{i}') # print current simulation step
+# initialize and start logging thread
+logging = LoggingThread()
+logging.start()
 
-    #capture_particle_snapshot(f"{i}.png")
+time.sleep(1)
 
-    print("calculating forces")
-    for p in particles:
-        #p.move(*borwnian_move(p, p.x, p.y, t))
-        p.F = calculate_force_on_particle(p, tarr[i]) # calculate the force on given particle
-
-
-    print("performing position updates")
-    for p in particles:
-        p.move_by_force()
+# initialize threads
+for i in range(NUMBER_THREADS):
+    i0 = int(np.multiply(*GRID_SIZE)/NUMBER_THREADS)*i
+    i1 = int(np.multiply(*GRID_SIZE)/NUMBER_THREADS)*(i+1)-1
+    thread = SimulationThread(i, i0, i1)
+    threads.append(thread)
 
 
+# start threads:
+for t in threads:
+    t.start()
 
+# start with simulating:
+logging.log("starting simulation")
+flag_threads_start = True
+time.sleep(1)
+
+
+# simulation:
+while n < NUMBER_STEPS:
+
+    logging.log(f"-"*60 + f"> STEP: {n}")
+    logging.log(f"FORCE CALCULATION: {n}")
+    flag_threads_clculate_force = True # allow threads to calculate forces now
+
+    # calculate forces, wait for threads
+    while not np.all(get_threads_finished_calculating_forces()):
+        pass
+
+    flag_threads_clculate_force = False # so all threads will wait in the next iteration
+
+    logging.log(f"POSITION UPDATE: {n}")
+    flag_threads_calculate_position = True # allow threads to update positions
+
+    # calculate positions, wait for threads
+    while not np.all(get_threads_finished_calculating_position()):
+        pass
+    
+    flag_threads_calculate_position = False # so all threads will wait in the next iteration
+
+
+    # done itteration:
+    n += 1
+
+
+
+# waiting forthreads to close:
+while not np.all(get_threads_finished_all()):
+    pass
+
+
+# simulation finished:
+logging.log("done simulation")
+
+time.sleep(1)
+
+# close logging thread:
+logging.close()
+
+time.sleep(1)
 
 time_end = time.time()
 dt = time_end - time_start
