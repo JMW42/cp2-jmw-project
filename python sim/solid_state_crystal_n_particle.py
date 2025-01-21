@@ -73,6 +73,8 @@ avg_moves = []
 dirname = f"data/n_particle/k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
 os.makedirs(dirname, exist_ok=True)
 
+print(f"DIRNAME: {dirname}")
+
 # ########################################################################################################################
 # ########################################################################################################################
 # CLASSES:
