@@ -13,16 +13,17 @@ from uncertainties import ufloat
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy as sci
 
 
 # GLOBAL VARIABLES:
-n_steps:int = 1000 # number of simulation steps
-n_particles:int = 100 # number of prticles
+n_steps:int = 10000 # number of simulation steps
+n_particles:int = 200 # number of prticles
 kb:float=1 # bolzmann constant
 T:float = 1 # K, temperature
 R:float = 1 # particle radius
 friction:float = 1 # friction constant
-dt:float = R**2/(kb*T)/100 # timescale
+dt:float = R**2/(kb*T)/10000 # timescale
 rng_width:float = np.sqrt(2*friction*kb*T/dt) # width of the normal distributed rng
 
 print(f' dt = {dt}')
@@ -69,6 +70,15 @@ def borwnian_move(x:float, y:float, t:float):
     return dt/friction*(Fex + Ft)
 
 
+def fitfunc_r2(x, a, b):
+    return np.add(np.multiply(x, a), b)
+
+
+
+def fitfunc_linear(x, slope):
+    return np.multiply(x, slope)
+
+
 # MAIN CODE:
 particles = []
 
@@ -90,6 +100,7 @@ for i in range(n_steps):
     tarr.append(t)
 
 
+tarr = np.asarray(tarr)
 
 # calculate results:
 
@@ -104,11 +115,37 @@ np.savetxt("data/single_particle/yarr.txt", yarr)
 # calculate <r^2(t)>: enssemble mean position for given t
 # calculate ensemble mean for x and y position
 
-xarr2 = np.power(xarr, 2)
-yarr2 = np.power(yarr, 2)
+xarr2 = np.power(xarr, 2) # squared x positions of particles
+yarr2 = np.power(yarr, 2) # squared y positions of particles
 
 r2 =  np.add(xarr2, yarr2)
 r2_mean = np.mean(r2, axis=0)
+
+
+popt, pcov = sci.optimize.curve_fit(fitfunc_linear, tarr, r2_mean)
+perr = np.sqrt(np.diag(pcov))
+
+
+print("R2 FIT:")
+for name, value, err in zip(["slope", "y0"], popt, perr):
+    print(f" {name}={value}+/-{err}")
+
+
+
+#print("a")
+r2_log = np.log10(r2_mean)
+tarr2 = tarr[~np.isinf(r2_mean)]
+r2_log = r2_mean[~np.isinf(r2_mean)]
+
+
+popt2, pcov2 = sci.optimize.curve_fit(fitfunc_r2, tarr2, r2_log)
+perr2 = np.sqrt(np.diag(pcov2))
+
+
+
+print("R2 FIT 2:")
+for name, value, err in zip(["slope", "y0"], popt2, perr2):
+    print(f" {name}={value}+/-{err}")
 
 
 # save r2_mean dataset
@@ -119,16 +156,15 @@ df.to_csv("data/single_particle/r2_ensemble.csv")
 # <(r(t)-r_0)^2>=4Dt mit D=k_BT/gamma.
 
 # 1. calculate r(t)-r_0
-
 dxarr = []
-for xtrace in xarr:
+for xtrace in xarr: # iterate over individual x comp trace for one particle
     dxarr.append(np.subtract(xtrace, xtrace[0]))
 
 dxarr = np.asarray(dxarr)
 
 
 dyarr = []
-for ytrace in yarr:
+for ytrace in yarr: # iterate over individual y comp trace for one particle
     dyarr.append(np.subtract(ytrace, ytrace[0]))
 
 dyarr = np.asarray(dyarr)
@@ -168,14 +204,20 @@ plt.show()
 
 fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
-axes.plot(tarr, r2_mean, label="<r(t)^2>", color="navy")
+axes.plot(tarr[1:], r2_mean[1:], label=r"$<r(t)^2>$", color="navy")
+#axes.plot(tarr, fitfunc_r2(tarr, *popt), label="Fit.", color="red")
 
-axes.set_ylabel("Ensemble average <r(t)^2>")
-axes.set_xlabel("Time t [a.u.]")
+axes.plot(tarr[1:], fitfunc_linear(tarr[1:], *popt), label="Fitted Linear curve", color="red")
+axes.plot(tarr[1:], fitfunc_linear(tarr[1:], 1), label="y=x", color="orange")
+#axes.plot(tarr2, fitfunc_r2(tarr2, *popt2), label="Linear Fit", color="red")
+
+axes.set_ylabel(r"Ensemble average $<r(t)^2>$", fontsize=20)
+axes.set_xlabel("Time t [a.u.]", fontsize=20)
 axes.set_yscale('log')
 axes.set_xscale('log')
-axes.set_xlim([0.1, 10])
-axes.set_ylim([0.3, 50])
+#axes.set_xlim([0.001, np.max(tarr)])
+#axes.set_ylim([0.01, 20])
+axes.legend()
 axes.grid()
 
 fig.savefig("data/single_particle/r2_ensemble.png")
@@ -185,10 +227,13 @@ plt.show()
 
 fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
-axes.plot(tarr, Darr, label="<D(t)>", color="navy")
+axes.plot(tarr[1:], Darr[1:], label="<D(t)>", color="navy")
+axes.plot(tarr[1:], np.ones(len(tarr[1:])), "--", label="Expected value", color="red")
 
-axes.set_ylabel("<D(t)>")
-axes.set_xlabel("Time t [a.u.]")
+axes.set_ylabel("<D(t)>", fontsize=20)
+axes.set_xlabel("Time t [a.u.]", fontsize=20)
+axes.set_ylim([0, 1.5])
+axes.legend()
 axes.grid()
 
 fig.savefig("data/single_particle/diffusion_constant_ensemble.png")

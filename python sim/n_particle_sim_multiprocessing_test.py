@@ -1,6 +1,7 @@
 """ 
 CREATED: 08.12.2024
 AUTHOR: Jonathan Will
+UPDATED: 19.12.2024
 
 Implementation of an n-particle brownian motion simulation.
 
@@ -11,27 +12,34 @@ Implementation of an n-particle brownian motion simulation.
 # IMPORTS:
 
 import matplotlib.pyplot as plt
+import multiprocessing
 import numpy as np
+import threading
 import time
-import os
 
 # ########################################################################################################################
 # ########################################################################################################################
 # GLOBAL VARIABLES:
 
+multiprocessing.freeze_support()
+
 # simulation related
-LATTICE_PARAMETER:float = 2 # lattice parameter
+a:float = 2 # lattice parameter
 GRID_SIZE = [20, 10]
 
 NUMBER_STEPS:int = 10 # number of simulation steps
 NUMBER_PARTICLES:int = np.prod(GRID_SIZE) # number of prticles, calculated later
 EVALUATE_ENSEMBLE:bool = False
-BOUNDARY_BOX:list = [GRID_SIZE[0]*LATTICE_PARAMETER/2, GRID_SIZE[1]*LATTICE_PARAMETER*np.sqrt(3)] # size of the simulation box, calculated later
+BOUNDARY_BOX:list = [GRID_SIZE[0]*a/2, GRID_SIZE[1]*a*np.sqrt(3)] # size of the simulation box, calculated later
 
 # rotation:
 ROTATION_ANGLE = np.pi/2*0
-ROTATION_RADIUS = LATTICE_PARAMETER*3
+ROTATION_RADIUS = a*3
 
+
+
+# threading:
+NUMBER_PROCESSES = 1
 
 
 print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
@@ -48,7 +56,7 @@ R:float = 1 # particle radius
 friction:float = 1 # friction constant
 
 # interaction parameters:
-k_int:float = 50 # interaction constant, spring constant
+k_int:float = 10 # interaction constant, spring constant
 
 # derived variables/constants
 dt:float = R**2/(kb*T)/10000 # timescale
@@ -56,9 +64,9 @@ rng_width:float = np.sqrt(2*friction*kb*T/dt) # width of the normal distributed 
 boundary_box_half = np.divide(BOUNDARY_BOX, 2) # half size of the boundary box, max coordinate values
 
 # further variables:
-particles:list = [] # list of all particles
-particles_traces_x:list = [[]]*NUMBER_PARTICLES # x component for the traces of all particles
-particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of all particles
+#particles:list = [] # list of all particles
+#particles_traces_x:list = [[]]*NUMBER_PARTICLES # x component for the traces of all particles
+#particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of all particles
 
 tarr:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated time values:
 print(f"NUMBER OF TIMESTEPS: {len(tarr)}")
@@ -66,12 +74,9 @@ print(f'TIME: {tarr[0]}, .... , {tarr[-1]}')
 print(f'TIMESTEP: {dt}')
 
 
+
 # tmp:
 avg_moves = []
-
-
-dirname = f"data/n_particle/k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
-os.makedirs(dirname, exist_ok=True)
 
 # ########################################################################################################################
 # ########################################################################################################################
@@ -81,22 +86,22 @@ class Particle2D:
     """ Particle2D, class used to simulate the particles."""
     def __init__(self, x0:float=0, y0:float=0, id:int=None):
         
-        self.r = np.asarray([float(x0), float(y0)], dtype="float32") # particle position
-        self.F = np.asarray([0.0, 0.0], dtype="float32") # force acting on particle for a given time step
+        self.r = np.asarray([x0, y0]) # particle position
+        self.F = np.asarray([0, 0]) # force acting on particle for a given time step
 
 
         # get id for later usage of the trace lists
         self.id:int = id
-        if not self.id:self.id = len(particles)
+        if not self.id:self.id = len(ns.particles)
 
         # append new list to trace list
         try:
-            particles_traces_x[self.id] = [x0]
-            particles_traces_y[self.id] = [y0]
+            ns.particles_traces_x[self.id] = [x0]
+            ns.particles_traces_y[self.id] = [y0]
         except Exception as E:
             print(self.id)
             print(E)
-            
+            input("asdw")
     
     # property: x-position
     @property
@@ -126,8 +131,8 @@ class Particle2D:
     # method: move particle
     def move(self, dx:float, dy:float) -> None:
         """ method used to move a given particle"""
-        self.x += float(dx)
-        self.y += float(dy)
+        self.x +=dx
+        self.y +=dy
 
         # boundary check left and right boundary
         if np.abs(self.x) > boundary_box_half[0]:
@@ -138,9 +143,8 @@ class Particle2D:
             self.y -= msign(self.y)*BOUNDARY_BOX[1]
         
         # add new position to trace lists
-        particles_traces_x[self.id].append(self.x)
-        particles_traces_y[self.id].append(self.y)
-
+        ns.particles_traces_x[self.id].append(self.x)
+        ns.particles_traces_y[self.id].append(self.y)
 
         avg_moves.append(np.sqrt(np.sum(np.power([dx, dy], 2))))
 
@@ -148,8 +152,62 @@ class Particle2D:
     def move_by_force(self):
         """ updates the particle position based on the stored force values. May the force be with you!!!!"""
         dr = dt/friction*self.F
-        #print(f"{self.id}, F={self.F}, --> {dr}, r={self.r}")
         self.move(*dr)
+
+
+# ########################################################################################################################
+# ########################################################################################################################
+# PROCESS METHOD:
+
+def process_run_method(ns, id, id0, id1):
+        print(f"starting process: {id} - {id0} to {id1}")
+
+        # initial wait:
+        print(f" {id}: waiting")
+        while not ns.flag_threads_start:
+            pass
+        
+
+        while ns.n < NUMBER_STEPS:
+
+            # wait for force calculation flag:
+            while not ns.flag_threads_clculate_force:
+
+                # if n is to late updated, capture it by break
+                if ns.n >= NUMBER_STEPS:
+                    break
+            
+            # if n is to late updated, capture it by break
+            if ns.n >= NUMBER_STEPS:
+                    break
+
+            ns.finished_calculation_positions[id] = False # update flag
+
+            print(f" {id} step: {ns.n}")
+
+
+            # calculate forces:
+            print(f" {id} calculating forces")
+            for i in range(id0, id1+1):
+                ns.particles[i].F = calculate_force_on_particle(ns.particles[i], tarr[ns.n])
+
+            ns.finished_calculation_forces[id] = True # force calculation finished
+
+            # wait for position update flag:
+            while not ns.flag_threads_calculate_position:
+                pass
+            
+            ns.finished_calculation_forces[id] = False # update flag
+
+            # update positions
+            print(f" {id} calculating positions")
+            for i in range(ns.index_start[id], ns.index_end[id]+1):
+                ns.particles[i].move_by_force()
+
+            ns.finished_calculation_positions[id] = True # position updates done
+
+        print(f"closing thread: {id}")
+        ns.finished_all[id] = True
 
 
 # ########################################################################################################################
@@ -176,11 +234,10 @@ def repulsive_force(rA: np.ndarray, rB: np.ndarray) -> np.ndarray:
     
     length:float = np.sum(np.abs(vec)) # squared length of the difference between rA and rB
     #length:float = np.sum(np.power(vec, 2))
-    length:float = np.linalg.norm(vec, 2)
 
     # 2. check if positions are within interaction distance:
-    if length < 2*R:
-        #length = np.sqrt(length) # propper length calculatiobn, applay square root
+    if length < 4*R**2:
+        length = np.sqrt(length) # propper length calculatiobn, applay square root
         vec /= length # normalize vector
 
         #F += (vec/length**int_exp)*k_int # repulsive interaction force
@@ -194,7 +251,7 @@ def repulsive_force(rA: np.ndarray, rB: np.ndarray) -> np.ndarray:
 
 def external_force_on_particle(p1:Particle2D, t:float)->np.ndarray:
     """ external force, defined by position and time"""
-    return np.array([0.0, 0.0], dtype="float32")
+    return np.array([0, 0])
 
 
 
@@ -206,11 +263,11 @@ def thermal_force_on_particle(p1:Particle2D, t:float)->np.ndarray:
 
 def repulsive_force_on_particle(p1:Particle2D):
     """ Method for calculating the repulsve force a given particle p1 experiences. Takes normal interaction withing abd over boundaries into account"""
-    F:np.ndarray = np.asarray([0.0, 0.0], dtype="float32")
+    F:np.ndarray = np.asarray([0.0, 0.0])
 
     # standart repulsive force for particle p1 interactions with p2
 
-    for p2 in particles:
+    for p2 in ns.particles:
         if p2 is p1: continue # ignore, because p2 is self
 
         # casual interaction within boundaries
@@ -236,17 +293,25 @@ def repulsive_force_on_particle(p1:Particle2D):
 
 
 
+def borwnian_move(p:Particle2D, x:float, y:float, t:float)->np.ndarray:
+    """ DEPRECATED: method to calculate the change of a particles position done by a brownian movement."""
+    Fex:np.ndarray = external_force_on_particle(x, y, t)  # exteenal additional force
+    Ft:np.ndarray = thermal_force_on_particle(x, y, t) # thermal force, borwnian motion
+    Fint:np.ndarray = repulsive_force_on_particle(p) # repulsive_interaction(x, y, t) # interactin force between particles
+    
+    return dt/friction*(Fex + Ft + Fint)
+
+
+
 def calculate_force_on_particle(p:Particle2D, t:float)->np.ndarray:
     """ calculates the sum of forces acting on a given particle p at a given time t."""
-    F = np.asarray([0.0, 0.0], dtype="float32")
+    F = np.asanyarray([0.0, 0.0])
 
-    # sum over all acting forces
     F += external_force_on_particle(p, t)  # exteenal additional force
     F += thermal_force_on_particle(p, t) # thermal force, borwnian motion
     F += repulsive_force_on_particle(p)
 
     return F
-
 
 
 def rotate_point(x, y, theta) -> tuple:
@@ -263,7 +328,7 @@ def visualize_simulation(savefilepath=None):
     fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
     # draw particles and virtual particles
-    for p in particles:
+    for p in ns.particles:
         
         # original particles
         c = plt.Circle((p.x, p.y), R, facecolor="navy", edgecolor="black", linestyle="-", linewidth=2)
@@ -296,94 +361,181 @@ def visualize_simulation(savefilepath=None):
     plt.show()
 
 
+
+def get_threads_finished_all():
+    status = []
+    for idp in range(NUMBER_PROCESSES):
+        status.append(ns.finished_all[idp])
+
+    return status
+
+
+def get_threads_finished_calculating_forces():
+    status = []
+    for idp in range(NUMBER_PROCESSES):
+        status.append(ns.finished_calculation_forces[idp])
+
+    return status
+
+
+def get_threads_finished_calculating_position():
+    status = []
+    for idp in range(NUMBER_PROCESSES):
+        status.append(ns.finished_calculation_positions[idp])
+
+    return status
+
 # ########################################################################################################################
 # ########################################################################################################################
 # MAIN CODE:
 
+if __name__ == "__main__":
 
-# initialize and place particels on hexgri
-for nx in range(0, GRID_SIZE[0]):
-    for ny in range(0, GRID_SIZE[1]):
+    # multiprocessing:
+    print("Setting up multiprocessing environment")
 
-        px:float = LATTICE_PARAMETER/2*(nx - GRID_SIZE[0]/2) + LATTICE_PARAMETER/1000
-        py:float = LATTICE_PARAMETER*np.sqrt(3)*(ny - GRID_SIZE[1]/2) + LATTICE_PARAMETER/1000
-
-        if nx % 2 == 0:
-            py += LATTICE_PARAMETER*np.sqrt(3)/2
+    processes = []
+    manager = multiprocessing.Manager()
+    ns = manager.Namespace()
 
 
-        # check if rotation trafo for grain applies:
-        if np.sqrt(px**2 + py**2) < ROTATION_RADIUS:
-            px, py = rotate_point(px, py, ROTATION_ANGLE)
+    # register flags
+    ns.flag_threads_start = False
+    ns.flag_threads_clculate_force = False
+    ns.flag_threads_calculate_position = False
+    ns.n = 0 # simulation step
+
+    # register process status flags
+    ns.finished_calculation_forces = manager.list([False]*NUMBER_PROCESSES)
+    ns.finished_calculation_positions = manager.list([False]*NUMBER_PROCESSES)
+    ns.finished_all = manager.list([False]*NUMBER_PROCESSES)
+
+
+    # register simulation variables:
+    ns.tarr = manager.list(tarr)
+    ns.particles = manager.list() # list of all particles
+    ns.particles_traces_x = manager.list([[]]*NUMBER_PARTICLES) # x component for the traces of all particles
+    ns.particles_traces_y = manager.list([[]]*NUMBER_PARTICLES) # y component for the traces of all particles
+    
+
+    print("Setup done")
+
+
+    print("Initiating particles")
+    # initialize and place particels on hexgri
+    for nx in range(0, GRID_SIZE[0]):
+        for ny in range(0, GRID_SIZE[1]):
+
+            px:float = a/2*(nx - GRID_SIZE[0]/2) + a/1000
+            py:float = a*np.sqrt(3)*(ny - GRID_SIZE[1]/2) + a/1000
+
+            if nx % 2 == 0:
+                py += a*np.sqrt(3)/2
+
+
+            # check if rotation trafo for grain applies:
+            if np.sqrt(px**2 + py**2) < ROTATION_RADIUS:
+                px, py = rotate_point(px, py, ROTATION_ANGLE)
+            
+
+            p:Particle2D = Particle2D(px, py) # initialise particle
+            ns.particles.append(p) # add particle to particle list
+
+
+    # visualize initial condition:
+    print(ns.particles)
+    visualize_simulation("data/n_particle/particle_initial.png")
+
+
+    # simulation:
+    time_start = time.time()
+
+
+    time.sleep(1)
+
+    # initialize threads
+    for i in range(NUMBER_PROCESSES):
+        i0 = int(np.multiply(*GRID_SIZE)/NUMBER_PROCESSES)*i
+        i1 = int(np.multiply(*GRID_SIZE)/NUMBER_PROCESSES)*(i+1)-1
+
+        print(f"Spawning process: {i}")
+        proc = multiprocessing.Process(target=process_run_method, args=(ns, i, i0, i1))
+        processes.append(proc)
+
+
+
+    # start threads:
+    for proc in processes:
+        proc.start()
+
+    # start with simulating:
+    flag_threads_start = True
+    time.sleep(1)
+
+
+    # simulation:
+    while ns.n < NUMBER_STEPS:
+
+        print(f"-"*60 + f"> STEP: {ns.n}")
+        print(f"FORCE CALCULATION: {ns.n}")
+        flag_threads_clculate_force = True # allow threads to calculate forces now
+
+        # calculate forces, wait for threads
+        while not np.all(get_threads_finished_calculating_forces()):
+            pass
+
+        flag_threads_clculate_force = False # so all threads will wait in the next iteration
+
+        print(f"POSITION UPDATE: {ns.n}")
+        flag_threads_calculate_position = True # allow threads to update positions
+
+        # calculate positions, wait for threads
+        while not np.all(get_threads_finished_calculating_position()):
+            pass
         
-
-        p:Particle2D = Particle2D(px, py) # initialise particle
-        particles.append(p) # add particle to particle list
+        flag_threads_calculate_position = False # so all threads will wait in the next iteration
 
 
-
-""" 
-p:Particle2D = Particle2D(4.5, 0) # initialise particle
-particles.append(p) # add particle to particle list
-
-p:Particle2D = Particle2D(5.0, 0.0) # initialise particle
-particles.append(p) # add particle to particle list
-
-
-p:Particle2D = Particle2D(0.0, 4.5) # initialise particle
-particles.append(p) # add particle to particle list
-
-p:Particle2D = Particle2D(0.0, 5.0) # initialise particle
-particles.append(p) # add particle to particle list
-"""
-
-# visualize initial condition:
-visualize_simulation(f"{dirname}/particle_initial.png")
+        # done itteration:
+        ns.n += 1
 
 
 
-# simulation:
-time_start = time.time()
+    # waiting forthreads to close:
+    while not np.all(get_threads_finished_all()):
+        pass
 
 
-for i in range(1, NUMBER_STEPS):
-    print(f'{i}') # print current simulation step
+    # simulation finished:
+    print("done simulation")
 
-    #capture_particle_snapshot(f"{i}.png")
-
-    print("calculating forces")
-    for p in particles:
-        #p.move(*borwnian_move(p, p.x, p.y, t))
-        p.F = calculate_force_on_particle(p, tarr[i]) # calculate the force on given particle
+    time.sleep(1)
 
 
-    print("performing position updates")
-    for p in particles:
-        p.move_by_force()
-        p.F = np.zeros(2, dtype="float32")
+    time.sleep(1)
+
+    time_end = time.time()
+    dt = time_end - time_start
+    print(f" time elapsed : {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} sec.")
 
 
+    # visualice results:
+    #visualize_simulation("data/n_particle/particle_traces.png")
 
 
-time_end = time.time()
-dt = time_end - time_start
-print(f" time elapsed : {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} sec.")
+    # SAVE PARTICLE TRACES:
+
+    #print(particles_traces_x)
+
+    print("saving data ....")
+    np.savetxt("data/n_particle/x_traces.txt", ns.particles_traces_x)
+    np.savetxt("data/n_particle/y_traces.txt", ns.particles_traces_y)
+    print("... saved")
 
 
-# visualice results:
-visualize_simulation(f"{dirname}/particle_traces.png")
+    print(f" avg. movement: {np.mean(avg_moves)} +/- {np.std(avg_moves)}")
+    print(f" max movement: {np.max(avg_moves)}")
+    print(f" min movement: {np.min(avg_moves)}")
 
-
-# SAVE PARTICLE TRACES:
-
-print("saving data ....")
-np.savetxt(f"{dirname}/x_traces.txt", particles_traces_x)
-np.savetxt(f"{dirname}/y_traces.txt", particles_traces_y)
-print("... saved")
-
-print(f" avg. movement: {np.mean(avg_moves)} +/- {np.std(avg_moves)}")
-print(f" max movement: {np.max(avg_moves)}")
-print(f" min movement: {np.min(avg_moves)}")
-
-print(f"DONE ...")
-
+    
+    print("DONE")

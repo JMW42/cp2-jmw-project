@@ -17,9 +17,9 @@ kb:float=1 # J/K bolzmann constant
 T = 1 # K, temperature
 R = 1 # particle radius
 friction:float = kb*T/R # friction constant
-dt:float = R**2/(kb*T)/100 # s, timescale
+dt:float = R**2/(kb*T)/10000 # s, timescale
 rng_width:float = np.sqrt(2*friction*kb*T/dt) # width of the normal distributed rng
-
+print(rng_width)
 
 hist = []
 

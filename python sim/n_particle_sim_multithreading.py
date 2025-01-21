@@ -21,16 +21,16 @@ import time
 # GLOBAL VARIABLES:
 
 # simulation related
-a:float = 1.8 # lattice parameter
-GRID_SIZE = [40, 20]
+a:float = 2 # lattice parameter
+GRID_SIZE = [20, 10]
 
-NUMBER_STEPS:int = 50 # number of simulation steps
+NUMBER_STEPS:int = 10 # number of simulation steps
 NUMBER_PARTICLES:int = np.prod(GRID_SIZE) # number of prticles, calculated later
 EVALUATE_ENSEMBLE:bool = False
 BOUNDARY_BOX:list = [GRID_SIZE[0]*a/2, GRID_SIZE[1]*a*np.sqrt(3)] # size of the simulation box, calculated later
 
 # rotation:
-ROTATION_ANGLE = np.pi/2
+ROTATION_ANGLE = np.pi/2*0
 ROTATION_RADIUS = a*3
 
 
@@ -78,6 +78,12 @@ flag_threads_clculate_force = False
 flag_threads_calculate_position = False
 
 n = 0 # simulation step
+
+
+# tmp:
+avg_moves = []
+
+
 
 # ########################################################################################################################
 # ########################################################################################################################
@@ -146,6 +152,8 @@ class Particle2D:
         # add new position to trace lists
         particles_traces_x[self.id].append(self.x)
         particles_traces_y[self.id].append(self.y)
+
+        avg_moves.append(np.sqrt(np.sum(np.power([dx, dy], 2))))
 
     
     def move_by_force(self):
@@ -220,7 +228,7 @@ class SimulationThread(threading.Thread):
             if n >= NUMBER_STEPS:
                     break
 
-            self.finished_calculation_positions = False
+            self.finished_calculation_positions = False # update flag
 
             logging.log(f" {self.id} step: {n}")
 
@@ -236,7 +244,7 @@ class SimulationThread(threading.Thread):
             while not flag_threads_calculate_position:
                 pass
             
-            self.finished_calculation_forces = False
+            self.finished_calculation_forces = False # update flag
 
             # update positions
             logging.log(f" {self.id} calculating positions")
@@ -364,7 +372,7 @@ def rotate_point(x, y, theta) -> tuple:
 
 def visualize_simulation(savefilepath=None):
     """ visualizes/plots the current state of the simulation"""
-    fig, axes = plt.subplots(1,1, figsize=(int(GRID_SIZE[0]/4), int(GRID_SIZE[1]*np.sqrt(3))))
+    fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
     # draw particles and virtual particles
     for p in particles:
@@ -378,20 +386,27 @@ def visualize_simulation(savefilepath=None):
 
         # virtual particles
         for E in [[1,0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]:
+            
 
             pos = p.r + np.multiply(E, BOUNDARY_BOX)
-            c = plt.Circle((pos[0], pos[1]), R, facecolor="orange", edgecolor="black", linestyle="-", linewidth=2)
-            axes.add_artist(c)
+            if (np.abs(pos[0]) < BOUNDARY_BOX[0]/2 + 4.5*R) and (np.abs(pos[1]) < BOUNDARY_BOX[1]/2 + 4.5*R):
+                c = plt.Circle((pos[0], pos[1]), R, facecolor="orange", edgecolor="black", linestyle="-", linewidth=2)
+                axes.add_artist(c)
 
     axes.plot([BOUNDARY_BOX[0]/2, BOUNDARY_BOX[0]/2, -1*BOUNDARY_BOX[0]/2, -1*BOUNDARY_BOX[0]/2, BOUNDARY_BOX[0]/2], [-1*BOUNDARY_BOX[1]/2, BOUNDARY_BOX[1]/2, BOUNDARY_BOX[1]/2, -1*BOUNDARY_BOX[1]/2, -1*BOUNDARY_BOX[1]/2], color="black")
 
-    axes.set_xlim([-1.6*BOUNDARY_BOX[0], 1.6*BOUNDARY_BOX[0]])
-    axes.set_ylim([-1.6*BOUNDARY_BOX[1], 1.6*BOUNDARY_BOX[1]])
+    axes.set_xlim([-BOUNDARY_BOX[0]/2-5*R, BOUNDARY_BOX[0]/2+5*R])
+    axes.set_ylim([-BOUNDARY_BOX[1]/2-5*R, BOUNDARY_BOX[1]/2+5*R])
+
+    axes.set_xlabel("X position [a.u.]", fontsize=20)
+    axes.set_ylabel("Y position [a.u.]", fontsize=20)
+
 
     if savefilepath:
         fig.savefig(savefilepath)
 
     plt.show()
+
 
 
 def get_threads_finished_all():
@@ -525,10 +540,7 @@ print(f" time elapsed : {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} se
 # visualice results:
 #visualize_simulation("data/n_particle/particle_traces.png")
 
-
 # SAVE PARTICLE TRACES:
-
-#print(particles_traces_x)
 
 print("saving data ....")
 np.savetxt("data/n_particle/x_traces.txt", particles_traces_x)
@@ -536,67 +548,8 @@ np.savetxt("data/n_particle/y_traces.txt", particles_traces_y)
 print("... saved")
 
 
-# EVALUATE ENSEBLE VARIABLES <r^2(t)> and <D(t))>
-if EVALUATE_ENSEMBLE:
-    # calculate ensemble average position:
-    ## first calculate r^2 = x^2 + y^2 for every particle, for each position
-    r2 =  np.add(np.power(particles_traces_x, 2), np.power(particles_traces_y, 2))
-    r2_mean = np.mean(r2, axis=0) # ensemble average for given value of time 
+print(f" avg. movement: {np.mean(avg_moves)} +/- {np.std(avg_moves)}")
+print(f" max movement: {np.max(avg_moves)}")
+print(f" min movement: {np.min(avg_moves)}")
 
-
-    # <(r(t)-r_0)^2>=4Dt mit D=k_BT/gamma.
-
-    # 1. calculate r(t)-r_0
-
-    dxarr = []
-    for xtrace in particles_traces_x:
-        dxarr.append(np.subtract(xtrace, xtrace[0]))
-
-    dxarr = np.asarray(dxarr)
-
-
-    dyarr = []
-    for ytrace in particles_traces_y:
-        dyarr.append(np.subtract(ytrace, ytrace[0]))
-
-    dyarr = np.asarray(dyarr)
-
-    # 2. calculate (r(t)-r_0)^2
-    dr2 = np.add(np.power(dxarr, 2), np.power(dyarr, 2))
-
-    # 3. calculate <(r(t)-r_0)^2>
-    dr2_mean = np.mean(dr2, axis=0) 
-
-
-    # 4. calculate <(r(t)-r_0)^2>/4t=<D(t)>
-    Darr = np.divide(dr2_mean, np.multiply(t, 4))
-
-
-    fig, axes = plt.subplots(1,1, figsize=(10, 10))
-
-    axes.plot(t[1:], r2_mean[1:], label="<r(t)^2>", color="navy")
-
-    axes.set_ylabel("Ensemble average <r(t)^2>")
-    axes.set_xlabel("Time t [a.u.]")
-    axes.set_yscale('log')
-    axes.set_xscale('log')
-    axes.grid()
-
-    fig.savefig("data/n_particle/r2-ensemble.png")
-    plt.show()
-
-
-
-    fig, axes = plt.subplots(1,1, figsize=(10, 10))
-
-    axes.plot(t[1:], Darr[1:], label="<D(t)>", color="navy")
-
-    axes.set_ylim([0, 2])
-    axes.set_ylabel("<D(t)>")
-    axes.set_xlabel("Time t [a.u.]")
-    axes.grid()
-
-    fig.savefig("data/n_particle/D-ensemble.png")
-
-    plt.show()
-
+print(f"DONE ...")

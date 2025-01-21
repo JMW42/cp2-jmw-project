@@ -37,6 +37,6 @@ axes.set_ylabel(r"Repulsive force $\frac{F_{rep.}(r)}{k}$ in [a.u.]", fontsize=2
 axes.set_xlabel(r"$\frac{r}{2R}$ in [a.u.]", fontsize=20)
 axes.grid()
 
-fig.savefig("data/repulsive_force.png")
+fig.savefig("data/repulsive_force.png", bbox_inches='tight')
 
 plt.show()
