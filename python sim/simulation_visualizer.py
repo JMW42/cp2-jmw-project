@@ -27,8 +27,8 @@ R = 1
 
 
 # simulation related
-LATTICE_PARAMETER:float = 2 # lattice parameter
-GRID_SIZE = [20, 10]
+LATTICE_PARAMETER:float = 1.9 # lattice parameter
+GRID_SIZE = [30, 10]
 
 NUMBER_STEPS:int = 10 # number of simulation steps
 NUMBER_PARTICLES:int = np.prod(GRID_SIZE) # number of prticles, calculated later
@@ -40,10 +40,10 @@ ROTATION_ANGLE = np.pi/2*0
 ROTATION_RADIUS = LATTICE_PARAMETER*3
 
 # interaction parameters:
-k_int:float = 50 # interaction constant, spring constant
+k_int:float = 80 # interaction constant, spring constant
 
 
-dirname = f"data/n_particle/k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
+dirname = f"data/n_particle/GRID={GRID_SIZE[0]}x{GRID_SIZE[1]}_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
 #os.makedirs(dirname, exist_ok=True)
 
 x_trace_file = f"{dirname}/x_traces.txt"
@@ -137,11 +137,11 @@ def update(i):
 
     axes.set_xlabel("X position [a.u.]", fontsize=20)
     axes.set_ylabel("Y position [a.u.]", fontsize=20)
-
+    
 
 
 ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0])+15, interval=1)
-ani.save(f'{dirname}/animation.gif', writer='pillow', fps=2, bitrate=1, dpi=50)
+ani.save(f"{dirname}/animation_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}.gif", writer='pillow', fps=10, bitrate=1, dpi=50)
 #len(particles_traces_x[0])
 
 

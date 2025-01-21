@@ -20,10 +20,10 @@ import os
 # GLOBAL VARIABLES:
 
 # simulation related
-LATTICE_PARAMETER:float = 2 # lattice parameter
-GRID_SIZE = [20, 10]
+LATTICE_PARAMETER:float = 1.9 # lattice parameter
+GRID_SIZE = [30, 10]
 
-NUMBER_STEPS:int = 10 # number of simulation steps
+NUMBER_STEPS:int = 1000 # number of simulation steps
 NUMBER_PARTICLES:int = np.prod(GRID_SIZE) # number of prticles, calculated later
 EVALUATE_ENSEMBLE:bool = False
 BOUNDARY_BOX:list = [GRID_SIZE[0]*LATTICE_PARAMETER/2, GRID_SIZE[1]*LATTICE_PARAMETER*np.sqrt(3)] # size of the simulation box, calculated later
@@ -48,7 +48,7 @@ R:float = 1 # particle radius
 friction:float = 1 # friction constant
 
 # interaction parameters:
-k_int:float = 50 # interaction constant, spring constant
+k_int:float = 80 # interaction constant, spring constant
 
 # derived variables/constants
 dt:float = R**2/(kb*T)/10000 # timescale
@@ -61,20 +61,41 @@ particles_traces_x:list = [[]]*NUMBER_PARTICLES # x component for the traces of 
 particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of all particles
 
 tarr:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated time values:
-print(f"NUMBER OF TIMESTEPS: {len(tarr)}")
+print(f"NUMBER OF TIMESTEPS: {NUMBER_STEPS}")
 print(f'TIME: {tarr[0]}, .... , {tarr[-1]}')
 print(f'TIMESTEP: {dt}')
 
+
+print(f"INTERACTION COEFFICIENT: {k_int}")
 
 # tmp:
 avg_moves = []
 
 
-dirname = f"data/n_particle/k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
+dirname = f"data/n_particle/GRID={GRID_SIZE[0]}x{GRID_SIZE[1]}_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
 os.makedirs(dirname, exist_ok=True)
 
 print(f"DIRNAME: {dirname}")
 
+print(f"{dirname}/config.txt")
+file = open(f"{dirname}/config.txt", "w")
+file.write("CONFIG")
+
+# write config to file
+file.write( "NUMBER OF PARTICLES: {NUMBER_PARTICLES}" )
+file.write( "GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}" )
+file.write( "ROTATION ANGLE: {ROTATION_ANGLE}" )
+file.write( "NUMBER OF TIMESTEPS: {NUMBER_STEPS}" )
+file.write( "TIME: {tarr[0]}, to , {tarr[-1]}" )
+file.write( "TIMESTEP: {dt}" )
+
+file.write( "INTERACTION COEFFICIENT: {k_int}" )
+
+
+#print(f'TIMESTEP: {dt}')
+#print(f'TIME: {tarr[0]}, to , {tarr[-1]}')
+#print(f"GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}")
+#print(f"ROTATION ANGLE: {ROTATION_ANGLE}")
 # ########################################################################################################################
 # ########################################################################################################################
 # CLASSES:
@@ -370,7 +391,7 @@ for i in range(1, NUMBER_STEPS):
 time_end = time.time()
 dt = time_end - time_start
 print(f" time elapsed : {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} sec.")
-
+file.write(f"TIME ELAPSED: {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} sec." )
 
 # visualice results:
 visualize_simulation(f"{dirname}/particle_traces.png")
@@ -387,5 +408,11 @@ print(f" avg. movement: {np.mean(avg_moves)} +/- {np.std(avg_moves)}")
 print(f" max movement: {np.max(avg_moves)}")
 print(f" min movement: {np.min(avg_moves)}")
 
+file.write(f"AVG MOVEMENT: {np.mean(avg_moves)} +/- {np.std(avg_moves)}" )
+file.write(f"MAX MOVEMENT: {np.max(avg_moves)}" )
+file.write(f"MIN MOVEMENT: {np.min(avg_moves)}" )
+
+
+file.close()
 print(f"DONE ...")
 
