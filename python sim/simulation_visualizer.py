@@ -27,23 +27,27 @@ R = 1
 
 
 # simulation related
-LATTICE_PARAMETER:float = 1.9 # lattice parameter
+LATTICE_PARAMETER:float = float(input("LATTICE PARAMETER (in a.u.):")) # lattice parameter
 GRID_SIZE = [30, 10]
 
-NUMBER_STEPS:int = 10 # number of simulation steps
+NUMBER_STEPS:int = int(input("STEPS:")) # number of simulation steps
 NUMBER_PARTICLES:int = np.prod(GRID_SIZE) # number of prticles, calculated later
 EVALUATE_ENSEMBLE:bool = False
 BOUNDARY_BOX:list = [GRID_SIZE[0]*LATTICE_PARAMETER/2, GRID_SIZE[1]*LATTICE_PARAMETER*np.sqrt(3)] # size of the simulation box, calculated later
 
 # rotation:
-ROTATION_ANGLE = np.pi/2*0
-ROTATION_RADIUS = LATTICE_PARAMETER*3
+ROTATION_ANGLE = np.pi*float(input("ROTATION ANGLE (in DEG):"))/180
+ROTATION_RADIUS = float(input("ROTATION RADIUS (in a.u.):"))
+
 
 # interaction parameters:
-k_int:float = 80 # interaction constant, spring constant
+k_int:float = float(input("INTERACTION COEFFICIENT (in a.u.):")) # interaction constant, spring constant
 
 
 dirname = f"data/n_particle/GRID={GRID_SIZE[0]}x{GRID_SIZE[1]}_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
+dirname = f"/cip/data/ra73mylu/n_particle/GRID={GRID_SIZE[0]}x{GRID_SIZE[1]}_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
+
+# /cip/data/ra73mylu/
 #os.makedirs(dirname, exist_ok=True)
 
 x_trace_file = f"{dirname}/x_traces.txt"
@@ -116,10 +120,7 @@ def update(i):
                 axes.add_artist(c)
 
 
-    axes.text(0.95, 0.95, f"step: {i-15} of {len(particles_traces_x[0])-1}",
-        horizontalalignment='right',
-        verticalalignment='top',
-        transform=axes.transAxes)
+    axes.text(0.95, 0.95, f"step: {i-15} of {len(particles_traces_x[0])-1}", horizontalalignment='right', verticalalignment='top', transform=axes.transAxes)
     #axes.text(np.min(particles_traces_x), np.max(particles_traces_y), f"setp: {i} of {len(particles_traces_x[0])}")
 
     # draw virtual particles:
@@ -139,11 +140,23 @@ def update(i):
     axes.set_ylabel("Y position [a.u.]", fontsize=20)
     
 
+try:
+    ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0])+15, interval=1)
+    ani.save(f"{dirname}/animation_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}.gif", writer='pillow', fps=30, bitrate=1, dpi=50)
+    #len(particles_traces_x[0])
+except Exception as E:
+        print(E)
 
-ani = animation.FuncAnimation(fig, update, frames=len(particles_traces_x[0])+15, interval=1)
-ani.save(f"{dirname}/animation_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}.gif", writer='pillow', fps=10, bitrate=1, dpi=50)
-#len(particles_traces_x[0])
-
+        print(f"-"*60)
+        print(f"LATTICE PARAMETER: {LATTICE_PARAMETER}")
+        print(f"NUMBER OF TIMESTEPS: {NUMBER_STEPS}")
+        print(f"ROTATION ANGLE: {ROTATION_ANGLE}")
+        print(f"ROTATION RADIUS: {ROTATION_RADIUS}")
+        print(f"INTERACTION COEFFICIENT: {k_int}")
+        print(f"-"*60)
+        print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
+        print(f"GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}")
+        
 
 time_end = time.time()
 dt = time_end - time_start

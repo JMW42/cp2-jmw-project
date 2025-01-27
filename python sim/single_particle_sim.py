@@ -18,7 +18,7 @@ import scipy as sci
 
 # GLOBAL VARIABLES:
 n_steps:int = 10000 # number of simulation steps
-n_particles:int = 200 # number of prticles
+n_particles:int = 100 # number of prticles
 kb:float=1 # bolzmann constant
 T:float = 1 # K, temperature
 R:float = 1 # particle radius
@@ -178,6 +178,7 @@ dr2_mean = np.mean(dr2, axis=0)
 
 # 4. calculate <(r(t)-r_0)^2>/4t=<D(t)>
 Darr = np.divide(dr2_mean, np.multiply(tarr, 4))
+deltaD = np.abs(np.ones(len(Darr)) - Darr)
 
 
 # save diffusion constant dataset
@@ -192,13 +193,19 @@ fig, axes = plt.subplots(1,1, figsize=(10, 10))
 
 
 for p in particles:
-    axes.plot(list(zip(*p.trace))[0], list(zip(*p.trace))[1], ".--")
-    axes.plot(list(zip(*p.trace))[0][-1], list(zip(*p.trace))[1][-1], "o", color="red")
-    axes.plot(list(zip(*p.trace))[0][0], list(zip(*p.trace))[1][0], "o", color="navy")
+    axes.plot(list(zip(*p.trace))[0], list(zip(*p.trace))[1], ".--", label="Trajectory")
+    axes.plot(list(zip(*p.trace))[0][0], list(zip(*p.trace))[1][0], "o", color="navy", label="Start")
+    axes.plot(list(zip(*p.trace))[0][-1], list(zip(*p.trace))[1][-1], "o", color="red", label="End")
+    
+
+
+axes.set_xlabel("X Position in [a.u.]", fontsize=20)
+axes.set_ylabel("Y Position in [a.u.]", fontsize=20)
+#axes.legend(fontsize=20)
+axes.grid()
 
 fig.savefig("data/single_particle/traces.png")
 plt.show()
-
 
 
 
@@ -230,11 +237,16 @@ fig, axes = plt.subplots(1,1, figsize=(10, 10))
 axes.plot(tarr[1:], Darr[1:], label="<D(t)>", color="navy")
 axes.plot(tarr[1:], np.ones(len(tarr[1:])), "--", label="Expected value", color="red")
 
+axes.plot(tarr[1:], deltaD[1:], label="|1 - <D(t)>|", color="green")
+axes.plot(tarr[1:], np.zeros(len(deltaD[1:])), "--", color="lime")
+
 axes.set_ylabel("<D(t)>", fontsize=20)
 axes.set_xlabel("Time t [a.u.]", fontsize=20)
-axes.set_ylim([0, 1.5])
+axes.set_ylim([-0.1, 1.5])
 axes.legend()
 axes.grid()
 
 fig.savefig("data/single_particle/diffusion_constant_ensemble.png")
 plt.show()
+
+

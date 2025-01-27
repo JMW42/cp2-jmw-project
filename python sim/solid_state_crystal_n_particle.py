@@ -1,8 +1,9 @@
 """ 
-CREATED: 08.12.2024
+CREATED: 25.01.2025
 AUTHOR: Jonathan Will
 
 Implementation of an n-particle brownian motion simulation.
+
 
 """
 
@@ -11,6 +12,7 @@ Implementation of an n-particle brownian motion simulation.
 # IMPORTS:
 
 import matplotlib.pyplot as plt
+from datetime import datetime
 import numpy as np
 import time
 import os
@@ -20,23 +22,20 @@ import os
 # GLOBAL VARIABLES:
 
 # simulation related
-LATTICE_PARAMETER:float = 1.9 # lattice parameter
+LATTICE_PARAMETER:float = float(input("LATTICE PARAMETER (in a.u.):")) # lattice parameter
 GRID_SIZE = [30, 10]
 
-NUMBER_STEPS:int = 1000 # number of simulation steps
+NUMBER_STEPS:int = int(input("STEPS:")) # number of simulation steps
 NUMBER_PARTICLES:int = np.prod(GRID_SIZE) # number of prticles, calculated later
 EVALUATE_ENSEMBLE:bool = False
 BOUNDARY_BOX:list = [GRID_SIZE[0]*LATTICE_PARAMETER/2, GRID_SIZE[1]*LATTICE_PARAMETER*np.sqrt(3)] # size of the simulation box, calculated later
 
 # rotation:
-ROTATION_ANGLE = np.pi/2*0
-ROTATION_RADIUS = LATTICE_PARAMETER*3
+ROTATION_ANGLE = np.pi*float(input("ROTATION ANGLE (in DEG):"))/180
+ROTATION_RADIUS = float(input("ROTATION RADIUS (in a.u.):"))
 
 
 
-print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
-print(f"GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}")
-print(f"ROTATION ANGLE: {ROTATION_ANGLE}")
 
 
 # nature constants
@@ -48,7 +47,7 @@ R:float = 1 # particle radius
 friction:float = 1 # friction constant
 
 # interaction parameters:
-k_int:float = 80 # interaction constant, spring constant
+k_int:float = float(input("INTERACTION COEFFICIENT (in R):")) # interaction constant, spring constant
 
 # derived variables/constants
 dt:float = R**2/(kb*T)/10000 # timescale
@@ -61,35 +60,51 @@ particles_traces_x:list = [[]]*NUMBER_PARTICLES # x component for the traces of 
 particles_traces_y:list = [[]]*NUMBER_PARTICLES # y component for the traces of all particles
 
 tarr:np.ndarray = np.arange(dt/100, NUMBER_STEPS*dt, dt) # list of all simulated time values:
+
+
+# print values:
+print(f"-"*60)
+print(f"LATTICE PARAMETER: {LATTICE_PARAMETER}")
 print(f"NUMBER OF TIMESTEPS: {NUMBER_STEPS}")
+print(f"ROTATION ANGLE: {ROTATION_ANGLE}")
+print(f"ROTATION RADIUS: {ROTATION_RADIUS}")
+print(f"INTERACTION COEFFICIENT: {k_int}")
+print(f"-"*60)
+print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
+print(f"GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}")
 print(f'TIME: {tarr[0]}, .... , {tarr[-1]}')
 print(f'TIMESTEP: {dt}')
 
 
-print(f"INTERACTION COEFFICIENT: {k_int}")
 
+
+
+input("Press enter to continue .....")
 # tmp:
 avg_moves = []
 
 
 dirname = f"data/n_particle/GRID={GRID_SIZE[0]}x{GRID_SIZE[1]}_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
+dirname = f"/cip/data/ra73mylu/n_particle/GRID={GRID_SIZE[0]}x{GRID_SIZE[1]}_k={k_int}_a={str(LATTICE_PARAMETER).replace('.', ',')}_STEPS={str(NUMBER_STEPS)}_R={str(ROTATION_RADIUS)}_THETA={str(ROTATION_ANGLE).replace('.', ',')}"
+
+
 os.makedirs(dirname, exist_ok=True)
 
 print(f"DIRNAME: {dirname}")
 
-print(f"{dirname}/config.txt")
+print(f"CONFIGFILE: {dirname}/config.txt")
 file = open(f"{dirname}/config.txt", "w")
 file.write("CONFIG")
 
 # write config to file
-file.write( "NUMBER OF PARTICLES: {NUMBER_PARTICLES}" )
-file.write( "GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}" )
-file.write( "ROTATION ANGLE: {ROTATION_ANGLE}" )
-file.write( "NUMBER OF TIMESTEPS: {NUMBER_STEPS}" )
-file.write( "TIME: {tarr[0]}, to , {tarr[-1]}" )
-file.write( "TIMESTEP: {dt}" )
-
-file.write( "INTERACTION COEFFICIENT: {k_int}" )
+file.write(f"LATTICE PARAMETER: {LATTICE_PARAMETER}")
+file.write( f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}\n" )
+file.write( f"GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}\n" )
+file.write( f"ROTATION ANGLE: {ROTATION_ANGLE}\n" )
+file.write( f"NUMBER OF TIMESTEPS: {NUMBER_STEPS}\n" )
+file.write( f"TIME: {tarr[0]}, to , {tarr[-1]}\n" )
+file.write( f"TIMESTEP: {dt}\n" )
+file.write( f"INTERACTION COEFFICIENT: {k_int}\n" )
 
 
 #print(f'TIMESTEP: {dt}')
@@ -345,20 +360,6 @@ for nx in range(0, GRID_SIZE[0]):
 
 
 
-""" 
-p:Particle2D = Particle2D(4.5, 0) # initialise particle
-particles.append(p) # add particle to particle list
-
-p:Particle2D = Particle2D(5.0, 0.0) # initialise particle
-particles.append(p) # add particle to particle list
-
-
-p:Particle2D = Particle2D(0.0, 4.5) # initialise particle
-particles.append(p) # add particle to particle list
-
-p:Particle2D = Particle2D(0.0, 5.0) # initialise particle
-particles.append(p) # add particle to particle list
-"""
 
 # visualize initial condition:
 visualize_simulation(f"{dirname}/particle_initial.png")
@@ -370,17 +371,17 @@ time_start = time.time()
 
 
 for i in range(1, NUMBER_STEPS):
-    print(f'{i}') # print current simulation step
+    print(f'STEP: {i} of {NUMBER_STEPS}') # print current simulation step
 
     #capture_particle_snapshot(f"{i}.png")
 
-    print("calculating forces")
+    print(f"{datetime.now().strftime('%H:%M:%S')}: calculating forces")
     for p in particles:
         #p.move(*borwnian_move(p, p.x, p.y, t))
         p.F = calculate_force_on_particle(p, tarr[i]) # calculate the force on given particle
 
 
-    print("performing position updates")
+    print(f"{datetime.now().strftime('%H:%M:%S')}: performing position updates")
     for p in particles:
         p.move_by_force()
         p.F = np.zeros(2, dtype="float32")
@@ -391,7 +392,7 @@ for i in range(1, NUMBER_STEPS):
 time_end = time.time()
 dt = time_end - time_start
 print(f" time elapsed : {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} sec.")
-file.write(f"TIME ELAPSED: {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} sec." )
+file.write(f"TIME ELAPSED: {int(dt/3600)%60} hours. {int(dt/60)%60} min. {dt%60} sec.\n" )
 
 # visualice results:
 visualize_simulation(f"{dirname}/particle_traces.png")
@@ -400,19 +401,50 @@ visualize_simulation(f"{dirname}/particle_traces.png")
 # SAVE PARTICLE TRACES:
 
 print("saving data ....")
-np.savetxt(f"{dirname}/x_traces.txt", particles_traces_x)
-np.savetxt(f"{dirname}/y_traces.txt", particles_traces_y)
+try:
+    np.savetxt(f"{dirname}/x_traces.txt", particles_traces_x)
+    np.savetxt(f"{dirname}/y_traces.txt", particles_traces_y)
+except Exception as E:
+    print(E)
+
+    print(f"-"*60)
+    print(f"LATTICE PARAMETER: {LATTICE_PARAMETER}")
+    print(f"NUMBER OF TIMESTEPS: {NUMBER_STEPS}")
+    print(f"ROTATION ANGLE: {ROTATION_ANGLE}")
+    print(f"ROTATION RADIUS: {ROTATION_RADIUS}")
+    print(f"INTERACTION COEFFICIENT: {k_int}")
+    print(f"-"*60)
+    print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
+    print(f"GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}")
+    print(f'TIME: {tarr[0]}, .... , {tarr[-1]}')
+    print(f'TIMESTEP: {dt}')
+
+    
+
 print("... saved")
 
 print(f" avg. movement: {np.mean(avg_moves)} +/- {np.std(avg_moves)}")
 print(f" max movement: {np.max(avg_moves)}")
 print(f" min movement: {np.min(avg_moves)}")
 
-file.write(f"AVG MOVEMENT: {np.mean(avg_moves)} +/- {np.std(avg_moves)}" )
-file.write(f"MAX MOVEMENT: {np.max(avg_moves)}" )
-file.write(f"MIN MOVEMENT: {np.min(avg_moves)}" )
+file.write(f"AVG MOVEMENT: {np.mean(avg_moves)} +/- {np.std(avg_moves)}\n" )
+file.write(f"MAX MOVEMENT: {np.max(avg_moves)}\n" )
+file.write(f"MIN MOVEMENT: {np.min(avg_moves)}\n" )
 
 
 file.close()
-print(f"DONE ...")
 
+
+print(f"-"*60)
+print(f"LATTICE PARAMETER: {LATTICE_PARAMETER}")
+print(f"NUMBER OF TIMESTEPS: {NUMBER_STEPS}")
+print(f"ROTATION ANGLE: {ROTATION_ANGLE}")
+print(f"ROTATION RADIUS: {ROTATION_RADIUS}")
+print(f"INTERACTION COEFFICIENT: {k_int}")
+print(f"-"*60)
+print(f"NUMBER OF PARTICLES: {NUMBER_PARTICLES}")
+print(f"GRID SIZE: {GRID_SIZE[0]} x {GRID_SIZE[1]}")
+print(f'TIME: {tarr[0]}, .... , {tarr[-1]}')
+print(f'TIMESTEP: {dt}')
+
+print(f"DONE ...")
