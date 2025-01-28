@@ -14,9 +14,10 @@ Rarr = np.linspace(2.8, 14, 200)
 fig, axes = plt.subplots(1,1, figsize=(20, 10))
 
 
-axes.plot(Rarr, theta(Rarr, 2.0)/np.pi*180, label=r"$\theta_c(R_\theta)$, a=2.0")
-axes.plot(Rarr, theta(Rarr, 1.9)/np.pi*180, color="navy", label=r"$\theta_c(R_\theta)$, a=1.9")
-axes.plot(Rarr, theta(Rarr, 1.8)/np.pi*180, label=r"$\theta_c(R_\theta)$, a=1.8")
+axes.plot(Rarr, theta(Rarr, 2.1)/np.pi*180, label=r"$\theta_c(R_0)$, a=2.1")
+axes.plot(Rarr, theta(Rarr, 2.0)/np.pi*180, label=r"$\theta_c(R_0)$, a=2.0")
+axes.plot(Rarr, theta(Rarr, 1.9)/np.pi*180, color="navy", label=r"$\theta_c(R_0)$, a=1.9")
+axes.plot(Rarr, theta(Rarr, 1.8)/np.pi*180, label=r"$\theta_c(R_0)$, a=1.8")
 
 axes.plot([18*1.9/np.pi**2]*2, [0, 30], "--", color="green", label=r"$R_{min}(a=1.9)\approx 3.47$")
 axes.plot([np.min(Rarr), np.max(Rarr)], [30, 30], "--", color="red", label=r"$\theta_{max}$")
@@ -49,7 +50,7 @@ print(df_grain)
 fig, axes = plt.subplots(1,1, figsize=(20, 10))
 
 
-axes.plot(Rarr, theta(Rarr, 1.9)/np.pi*180, color="navy", label=r"$\theta_c(R_\theta)$, a=1.9")
+axes.plot(Rarr, theta(Rarr, 1.9)/np.pi*180, color="navy", label=r"$\theta_c(R_0)$, a=1.9")
 axes.plot([18*1.9/np.pi**2]*2, [0, 30], "--", color="green", label=r"$R_{min}(a=1.9)\approx 3.47$")
 axes.plot([np.min(Rarr), np.max(Rarr)], [30, 30], "--", color="red", label=r"$\theta_{max}$")
 
