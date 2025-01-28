@@ -204,7 +204,7 @@ axes.set_ylabel("Y Position in [a.u.]", fontsize=20)
 #axes.legend(fontsize=20)
 axes.grid()
 
-fig.savefig("data/single_particle/traces.png")
+fig.savefig("data/single_particle/traces.png", bbox_inches='tight')
 plt.show()
 
 
@@ -224,10 +224,10 @@ axes.set_yscale('log')
 axes.set_xscale('log')
 #axes.set_xlim([0.001, np.max(tarr)])
 #axes.set_ylim([0.01, 20])
-axes.legend()
+axes.legend(fontsize=20)
 axes.grid()
 
-fig.savefig("data/single_particle/r2_ensemble.png")
+fig.savefig("data/single_particle/r2_ensemble.png", bbox_inches='tight')
 plt.show()
 
 
@@ -243,10 +243,10 @@ axes.plot(tarr[1:], np.zeros(len(deltaD[1:])), "--", color="lime")
 axes.set_ylabel("<D(t)>", fontsize=20)
 axes.set_xlabel("Time t [a.u.]", fontsize=20)
 axes.set_ylim([-0.1, 1.5])
-axes.legend()
+axes.legend(fontsize=20)
 axes.grid()
 
-fig.savefig("data/single_particle/diffusion_constant_ensemble.png")
+fig.savefig("data/single_particle/diffusion_constant_ensemble.png", bbox_inches='tight')
 plt.show()
 
 

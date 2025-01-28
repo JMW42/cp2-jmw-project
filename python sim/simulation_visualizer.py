@@ -1,7 +1,7 @@
 """ 
 CREATED: 08.12.2024
 AUTHOR: Jonathan Will
-UPDATED: 19.12.2024
+UPDATED: 20.01.2025
 
 Python script to render videos of particle traces with given matrix files creates by single_particle and n_particle simulations.
 
